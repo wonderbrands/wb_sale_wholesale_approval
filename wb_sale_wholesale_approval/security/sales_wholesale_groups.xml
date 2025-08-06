@@ -1,0 +1,12 @@
+<odoo>
+    <data>
+        <record id="group_sales_wholesale_user" model="res.groups">
+            <field name="name">Ventas / Usuario de Ventas al Mayoreo</field>
+        </record>
+
+        <record id="group_finance_user" model="res.groups">
+            <field name="name">Ventas / Usuario de Aprobación de Finanzas</field>
+            <field name="implied_ids" eval="[(4, ref('group_sales_wholesale_user'))]"/>
+        </record>
+    </data>
+</odoo>

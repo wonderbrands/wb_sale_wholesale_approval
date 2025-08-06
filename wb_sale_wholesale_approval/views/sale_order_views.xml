@@ -1,0 +1,82 @@
+<odoo>
+    <data>
+        <record id="view_order_form_sales_wholesale" model="ir.ui.view">
+            <field name="name">sale.order.form.sales.wholesale</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="data_is_wholesale_sale"
+                           attrs="{'readonly': ['&amp;', ('state', 'in', ['sale', 'done', 'cancel']), ('data_finance_approval_status', '!=', False)]}"
+                           groups="wb_sale_wholesale_approval.group_sales_wholesale_user,wb_sale_wholesale_approval.group_finance_user"/>
+                </xpath>
+
+                <xpath expr="//field[@name='name']" position="after">
+                    <field name="data_wholesale_status_display"
+                           class="oe_right"
+                           widget="badge"
+                           attrs="{'invisible': [('data_wholesale_status_display', '=', False)]}"
+                           options="{'bg_color': 'info', 'text_color': 'white'}"/>
+                </xpath>
+                <xpath expr="//form/header" position="after">
+                    <div class="o_form_statusbar"
+                         groups="wb_sale_wholesale_approval.group_sales_wholesale_user"
+                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done']), ('data_is_wholesale_sale', '=', False)]}">
+
+                        <div class="o_statusbar_buttons">
+                            <button name="action_set_to_received" type="object"
+                                    string="Pago Recibido"
+                                    class="btn btn-primary"
+                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'pending')]}"
+                                    groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
+
+                            <button name="action_set_to_validation" type="object"
+                                    string="En Validación"
+                                    class="btn btn-primary"
+                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'received')]}"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+
+                            <button name="action_set_to_collected" type="object"
+                                    string="Pago Cobrado"
+                                    class="btn btn-primary"
+                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation', 'partially_collected'])]}"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+
+                            <button name="action_set_to_partially_collected" type="object"
+                                    string="Parcialmente Cobrado"
+                                    class="btn btn-secondary"
+                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'validation')]}"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+
+                            <button name="action_set_to_rejected" type="object"
+                                    string="Pago Rechazado"
+                                    class="btn btn-danger"
+                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation', 'partially_collected'])]}"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+
+                        </div>
+
+                        <field name="data_finance_approval_status"
+                               widget="statusbar"
+                               statusbar_visible="pending,received,validation,collected"
+                               options="{'clickable': False}"
+                               readonly="1"/>
+                    </div>
+                </xpath>
+
+                <xpath expr="//field[@name='date_order']" position="after">
+                    <field name="data_confirmation_date"
+                           attrs="{'invisible': ['|', ('data_is_wholesale_sale', '=', False), ('state', 'not in', ['sale', 'done'])]}"/>
+                </xpath>
+
+                <xpath expr="//button[@name='action_view_delivery']" position="attributes">
+                    <attribute name="attrs">
+                        {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', '=', 'pending')]}
+
+                    </attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

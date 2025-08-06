@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_order_sales_wholesale,sale.order access for wholesale users,model_sale_order,wb_sale_wholesale_approval.group_sales_wholesale_user,1,1,1,1
