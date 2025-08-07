@@ -1,5 +1,6 @@
 {
     'name': 'Aprobación de Ventas al Mayoreo',
+    'license': 'LGPL-3',
     'version': '1.0.0',
     'summary': 'Módulo para gestionar la aprobación financiera de ventas al mayoreo.',
     'description': """
