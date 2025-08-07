@@ -13,8 +13,7 @@ class SaleOrder(models.Model):
 
     data_wholesale_status_display = fields.Char(
         string='Venta al Mayoreo',
-        compute='_compute_wholesale_status_display',
-        store=True)
+        compute='_compute_wholesale_status_display',)
 
     @api.depends('data_is_wholesale_sale')
     def _compute_wholesale_status_display(self):
