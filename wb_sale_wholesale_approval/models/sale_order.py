@@ -55,8 +55,10 @@ class SaleOrder(models.Model):
                     'data_total_carrier_tracking': 1,
                     #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
                 })
+                print(carrier,carrier.name)
             else:
                 self.write({'data_finance_approval_status': 'received',})
+                print(carrier, carrier.name)
 
             # -------- Buscar y marcar la actividad como hecha -----------------------------
 
