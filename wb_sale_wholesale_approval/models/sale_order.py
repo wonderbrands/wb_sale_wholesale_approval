@@ -240,7 +240,7 @@ class SaleOrder(models.Model):
         _logger.info("El cron de cancelación de órdenes se está ejecutando.")
 
         # Define la fecha límite: hace 144 horas (6 días)
-        limit_date = datetime.now() - timedelta(minutes=144)
+        limit_date = datetime.now() - timedelta(hours=144)
 
         # Busca las órdenes que cumplen las condiciones:
         domain = [
@@ -276,7 +276,7 @@ class SaleOrder(models.Model):
     # Lógica para el aviso en el chatter de órdenes pendientes
     @api.model
     def _cron_send_payment_reminder_message(self):
-        _logger.info("El cron de aviso en el chatter se está ejecutando.")
+        _logger.info("El cron de aviso 'pago pendiente ventas mayoreo' se está ejecutando.")
 
         activity_type_id = self.env.ref('mail.mail_activity_data_todo').id
         now = datetime.now()
@@ -308,10 +308,10 @@ class SaleOrder(models.Model):
                     subtype_xmlid='mail.mt_comment',
                     author_id=author_id
                 )
-                _logger.info("Se envió un aviso en el chatter para la orden %s, remitente: %s.", order.name,
+                _logger.info("Se envió un aviso para la orden %s, remitente: %s.", order.name,
                              order.user_id.name)
             else:
                 _logger.warning("No se encontró un vendedor asignado para la orden %s. No se pudo enviar el aviso.",
                                 order.name)
 
-        _logger.info("El cron de aviso en el chatter ha finalizado.")
+        _logger.info("El cron de aviso 'pago pendiente ventas mayoreo' ha finalizado.")
