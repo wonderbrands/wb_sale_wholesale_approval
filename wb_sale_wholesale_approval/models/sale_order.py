@@ -129,13 +129,11 @@ class SaleOrder(models.Model):
             activities_to_done = self.env['mail.activity'].search([
                 ('res_id', '=', self.id),
                 ('res_model', '=', 'sale.order'),
-                ('active', '=', True)
             ])
             if activities_to_done:
                 activities_to_done.action_done()
 
             # Validar que no haya fecha efectiva y que el estado WMS no sea Despachado
-            print(self.wms_status)
             if not self.effective_date and self.wms_status != 'DESP':
                 # Cancelar la orden de venta
                 self.action_cancel()
