@@ -45,22 +45,7 @@ class SaleOrder(models.Model):
         # Solo se puede pasar a 'recibido' desde 'pendiente'
         if self.data_finance_approval_status in ['pending']:
 
-            carrier = self.carrier_selection_relational
-
-            # -------------------------------------------------
-            if carrier and carrier.name == 'Pick up': # Pickup
-                self.write({
-                    'data_finance_approval_status': 'received',
-                    'yuju_carrier_tracking_ref': 'Pick-up',
-                    'data_total_carrier_tracking': 1,
-                    #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
-                })
-                print(carrier,carrier.name)
-            else:
-                self.write({'data_finance_approval_status': 'received',})
-                print(carrier, carrier.name)
-
-            # -------- Buscar y marcar la actividad como hecha -----------------------------
+            # -------- Buscar y marcar la actividad de pago como hecha -----------------------------
 
             # Referencia al tipo de actividad
             activity_type_id = self.env.ref('mail.mail_activity_data_todo').id
@@ -71,12 +56,54 @@ class SaleOrder(models.Model):
             activities_to_done = self.env['mail.activity'].search([
                 ('res_id', '=', self.id),
                 ('res_model_id', '=', sale_order_model_id),
-                ('activity_type_id', '=', activity_type_id)
+                ('activity_type_id', '=', activity_type_id),
+                ('summary', '=', 'Revisión de aprobación financiera')
             ])
 
             # Marcar las actividades encontradas como hechas
             if activities_to_done:
                 activities_to_done.action_done()
+
+
+            # ----------------------------------------------------------------------
+            carrier = self.carrier_selection_relational
+
+            if carrier and carrier.name == 'Pick Up': # Pickup
+                self.write({
+                    'data_finance_approval_status': 'received',
+                    'yuju_carrier_tracking_ref': 'Pick-up',
+                    'data_total_carrier_tracking': 1,
+                    #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
+                })
+            elif not carrier:
+                commercial_group = self.env.ref('wb_sale_wholesale_approval.group_sales_commercial_user')
+                commercial_user = self.env['res.users'].search([('groups_id', 'in', commercial_group.ids)], limit=1)
+                date_deadline_carrier = datetime.now() + timedelta(hours=72)
+
+                # Crear actividad para comercial - asignacion de carrier y guia
+                if commercial_user:
+                    self.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        summary=_('Selección de carrier y generación de guía'),
+                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
+                        user_id=commercial_user.id,
+                        date_deadline=date_deadline_carrier,
+                    )
+                    self.write({'data_finance_approval_status': 'received', })
+                else:
+                    self.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        summary=_('Selección de carrier y generación de guía'),
+                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
+                        user_id=self.env.user.id,
+                        date_deadline=date_deadline_carrier,
+                    )
+                    self.write({'data_finance_approval_status': 'received', })
+
+            else:
+                self.write({'data_finance_approval_status': 'received',})
+
+
 
     def action_set_to_validation(self):
         self.ensure_one()
@@ -98,37 +125,94 @@ class SaleOrder(models.Model):
         if self.data_finance_approval_status in ['validation', 'partially_collected']:
             self.write({'data_finance_approval_status': 'rejected'})
 
+            # Cerrar actividades pendientes relacionadas con esta orden
+            activities_to_done = self.env['mail.activity'].search([
+                ('res_id', '=', self.id),
+                ('res_model', '=', 'sale.order'),
+                ('active', '=', True)
+            ])
+            if activities_to_done:
+                activities_to_done.action_done()
+
+            # Validar que no haya fecha efectiva y que el estado WMS no sea Despachado
+            print(self.wms_status)
+            if not self.effective_date and self.wms_status != 'DESP':
+                # Cancelar la orden de venta
+                self.action_cancel()
+                self.message_post(
+                    body=_("La orden de venta ha sido cancelada debido al rechazo del pago.")
+                )
+            else:
+                # Si no cumple condiciones, solo dejar el estado financiero en 'rejected'
+                self.message_post(
+                    body=_(
+                        "El pago ha sido rechazado, pero la orden no fue cancelada porque ya tiene fecha efectiva y está despachada en WMS.")
+                )
+
+    # -------------------------------------------------------------------------------------------
     # Sobreescribir el método de confirmación
     def action_confirm(self):
         res = super(SaleOrder, self).action_confirm()
         if self.data_is_wholesale_sale:
+            finance_group = self.env.ref('wb_sale_wholesale_approval.group_finance_user')
+            finance_user = self.env['res.users'].search([('groups_id', 'in', finance_group.ids)], limit=1)
+
             self.data_confirmation_date = datetime.now()
             self.data_finance_approval_status = 'pending'
             date_deadline = datetime.now() + timedelta(hours=72)
-            self.activity_schedule(
-                'mail.mail_activity_data_todo',
-                summary=_('Revisión de aprobación financiera'),
-                note=_('Revisar y aprobar el estado financiero de esta orden de venta al mayoreo.'),
-                user_id=self.env.user.id,
-                date_deadline=date_deadline,
-            )
+
+            if finance_user:
+                self.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary=_('Revisión de aprobación financiera'),
+                    note=_('Revisar y aprobar el estado financiero de esta orden de venta al mayoreo.'),
+                    user_id=finance_user.id,
+                    date_deadline=date_deadline,
+                )
+            else:
+                self.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary=_('Revisión de aprobación financiera'),
+                    note=_('Revisar y aprobar el estado financiero de esta orden de venta al mayoreo.'),
+                    user_id=self.env.user.id,
+                    date_deadline=date_deadline,
+                )
 
             # -----------------------------------------------------------------------------
-            # Se suscribe a los usuarios de los grupos 'Ventas mayoreo' y 'Finanzas' a las ventas de mayoreo.
+            # Se suscribe a los usuarios de los grupos 'Ventas mayoreo',  'Finanzas' y Comercial a las ventas de mayoreo.
             try:
                 wholesale_group = self.env.ref('wb_sale_wholesale_approval.group_sales_wholesale_user')
                 finance_group = self.env.ref('wb_sale_wholesale_approval.group_finance_user')
+                comercial_group = self.env.ref('wb_sale_wholesale_approval.group_sales_commercial_user')
+
             except ValueError:
                 return
 
             users_to_follow = self.env['res.users'].search([
-                ('groups_id', 'in', [wholesale_group.id, finance_group.id])
+                ('groups_id', 'in', [wholesale_group.id, finance_group.id, comercial_group.id])
             ])
 
             partner_ids = users_to_follow.mapped('partner_id').ids
             self.message_subscribe(partner_ids=partner_ids)
 
+        return res
 
+
+    # -------------------------------------------------------------------------------------------
+    # Sobreescribir el método de escritura
+    def write(self, vals):
+        res = super().write(vals)
+
+        if self.data_is_wholesale_sale:
+            if 'carrier_selection_relational' in vals and vals['carrier_selection_relational']:
+                for order in self:
+                    carrier_activities = self.env['mail.activity'].search([
+                        ('res_id', '=', order.id),
+                        ('res_model', '=', 'sale.order'),
+                        ('summary', '=', 'Selección de carrier y generación de guía')
+                    ])
+                    if carrier_activities:
+                        carrier_activities.action_done()
 
         return res
 
@@ -158,27 +242,36 @@ class SaleOrder(models.Model):
         _logger.info("El cron de cancelación de órdenes se está ejecutando.")
 
         # Define la fecha límite: hace 144 horas (6 días)
-        limit_date = datetime.now() - timedelta(minutes=10)
+        limit_date = datetime.now() - timedelta(minutes=144)
 
         # Busca las órdenes que cumplen las condiciones:
         domain = [
-            ('data_is_wholesale_sale', '=', True), # Venta al mayoreo
-            ('data_finance_approval_status', '=', 'pending'), # Sigue con estado financiero 'Pendiente de Pago'
-            ('state', 'in', ['sale', 'done']), # Estado de la orden 'Orden de vcenta' o 'Bloqueado'
-            ('data_confirmation_date', '<', limit_date.strftime('%Y-%m-%d %H:%M:%S')) # Ordenes con mas de 144 horas de confirmadas
+            ('data_is_wholesale_sale', '=', True),  # Venta al mayoreo
+            ('data_finance_approval_status', '=', 'pending'),  # Sigue con estado financiero 'Pendiente de Pago'
+            ('state', 'in', ['sale', 'done']),  # Estado de la orden 'Orden de vcenta' o 'Bloqueado'
+            ('data_confirmation_date', '<', limit_date.strftime('%Y-%m-%d %H:%M:%S'))
+            # Ordenes con mas de 144 horas de confirmadas
         ]
-
         old_orders = self.env['sale.order'].search(domain)
-
         _logger.info("Se encontraron %d órdenes antiguas que serán canceladas.", len(old_orders))
 
         # Cancela las órdenes encontradas
         for order in old_orders:
+            # Limpia los campos de aprobación
+            order.write({
+                'data_finance_approval_status': False,
+                #'data_confirmation_date': False,
+            })
+
+            # Cierra todas las actividades pendientes asociadas a esta orden
+            # Usamos search() en lugar de activity_search() para evitar el error
+            order.env['mail.activity'].search([('res_id', '=', order.id)]).action_done()
+
+            # Cancela la orden
             order.action_cancel()
             order.message_post(
                 body="La orden de venta ha sido cancelada automáticamente por superar el plazo de 6 días sin confirmación de pago.")
             _logger.info("La orden de venta %s ha sido cancelada.", order.name)
-
         _logger.info("El cron de cancelación de órdenes ha finalizado.")
 
     # ----------------------------------------------------------------------------------
@@ -224,4 +317,3 @@ class SaleOrder(models.Model):
                                 order.name)
 
         _logger.info("El cron de aviso en el chatter ha finalizado.")
-

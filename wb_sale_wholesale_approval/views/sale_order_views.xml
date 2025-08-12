@@ -22,14 +22,14 @@
                 <xpath expr="//form/header" position="after">
                     <div class="o_form_statusbar"
                          groups="wb_sale_wholesale_approval.group_sales_wholesale_user"
-                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done']), ('data_is_wholesale_sale', '=', False)]}">
+                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done', 'cancel']), ('data_is_wholesale_sale', '=', False)]}">
 
                         <div class="o_statusbar_buttons">
                             <button name="action_set_to_received" type="object"
                                     string="Pago Recibido"
                                     class="btn btn-primary"
                                     attrs="{'invisible': [('data_finance_approval_status', '!=', 'pending')]}"
-                                    groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
 
                             <button name="action_set_to_validation" type="object"
                                     string="En Validación"
@@ -54,7 +54,6 @@
                                     class="btn btn-danger"
                                     attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation', 'partially_collected'])]}"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
-
                         </div>
 
                         <field name="data_finance_approval_status"
@@ -73,7 +72,6 @@
                 <xpath expr="//button[@name='action_view_delivery']" position="attributes">
                     <attribute name="attrs">
                         {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', '=', 'pending')]}
-
                     </attribute>
                 </xpath>
             </field>
