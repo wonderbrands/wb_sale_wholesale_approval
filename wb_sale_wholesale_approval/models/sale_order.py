@@ -123,7 +123,6 @@ class SaleOrder(models.Model):
     def action_set_to_rejected(self):
         self.ensure_one()
         if self.data_finance_approval_status in ['validation', 'partially_collected']:
-            self.write({'data_finance_approval_status': 'rejected'})
 
             # Cerrar actividades pendientes relacionadas con esta orden
             activities_to_done = self.env['mail.activity'].search([
@@ -146,6 +145,8 @@ class SaleOrder(models.Model):
                     body=_(
                         "El pago ha sido rechazado, pero la orden no fue cancelada porque ya tiene fecha efectiva y está despachada en WMS.")
                 )
+
+            self.write({'data_finance_approval_status': 'rejected'})
 
     # -------------------------------------------------------------------------------------------
     # Sobreescribir el método de confirmación
@@ -194,6 +195,25 @@ class SaleOrder(models.Model):
             self.message_subscribe(partner_ids=partner_ids)
 
         return res
+
+    # -------------------------------------------------------------------------------------------
+    # Sobreescribir el método de cancelar
+    def action_cancel(self):
+        for order in self:
+            if order.data_is_wholesale_sale:
+                # Cerrar actividades pendientes
+                activities_to_done = self.env['mail.activity'].search([
+                    ('res_id', '=', order.id),
+                    ('res_model', '=', 'sale.order'),
+                ])
+
+                if activities_to_done:
+                    activities_to_done.action_done()
+
+                # Limpiar estado financiero
+                order.data_finance_approval_status = False
+
+        return super(SaleOrder, self).action_cancel()
 
 
     # -------------------------------------------------------------------------------------------
@@ -255,17 +275,8 @@ class SaleOrder(models.Model):
 
         # Cancela las órdenes encontradas
         for order in old_orders:
-            # Limpia los campos de aprobación
-            order.write({
-                'data_finance_approval_status': False,
-                #'data_confirmation_date': False,
-            })
-
-            # Cierra todas las actividades pendientes asociadas a esta orden
-            # Usamos search() en lugar de activity_search() para evitar el error
-            order.env['mail.activity'].search([('res_id', '=', order.id)]).action_done()
-
             # Cancela la orden
+            # Logica de cerrar actividades y status financiero a False, estan de action_cancel de este script
             order.action_cancel()
             order.message_post(
                 body="La orden de venta ha sido cancelada automáticamente por superar el plazo de 6 días sin confirmación de pago.")
