@@ -219,7 +219,11 @@ class SaleOrder(models.Model):
     # -------------------------------------------------------------------------------------------
     # Sobreescribir el método de escritura
     def write(self, vals):
-        res = super().write(vals)
+        # Verificacion de equipo de ventas 'Team_Mayoreo' para edicion con Write
+        if vals.get('data_is_wholesale_sale'):
+            team_mayoreo = self.env['crm.team'].search([('name', '=', 'Team_Mayoreo')], limit=1)
+            if team_mayoreo:
+                vals['team_id'] = team_mayoreo.id
 
         if self.data_is_wholesale_sale:
             if 'carrier_selection_relational' in vals and vals['carrier_selection_relational']:
@@ -232,9 +236,19 @@ class SaleOrder(models.Model):
                     if carrier_activities:
                         carrier_activities.action_done()
 
-        return res
+        return super().write(vals)
 
     # --------------------------------------------------------------------------------
+    # Si es mayoreo, asignar team_id 'Team_Mayoreo' -  Reiteramos que es este equipo de ventas porque lo modifica al crear el record
+    @api.model
+    def create(self, vals):
+        if vals.get('data_is_wholesale_sale'):
+            team_mayoreo = self.env['crm.team'].search([('name', '=', 'Team_Mayoreo')], limit=1)
+            if team_mayoreo:
+                vals['team_id'] = team_mayoreo.id
+        return super().create(vals)
+
+    # -----------------------------------------------------------------------------------
     @api.onchange('data_is_wholesale_sale')
     def _onchange_data_is_wholesale_sale(self):
         if self.data_is_wholesale_sale:
