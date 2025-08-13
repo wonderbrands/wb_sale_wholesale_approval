@@ -74,6 +74,11 @@
                         {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', '=', 'pending')]}
                     </attribute>
                 </xpath>
+
+                <xpath expr="//field[@name='team_id']" position="attributes">
+                    <attribute name="attrs">{'readonly': [('data_is_wholesale_sale', '=', True)]}</attribute>
+                </xpath>
+                
             </field>
         </record>
     </data>
