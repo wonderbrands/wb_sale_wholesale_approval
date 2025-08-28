@@ -19,11 +19,10 @@
                            attrs="{'invisible': [('data_wholesale_status_display', '=', False)]}"
                            options="{'bg_color': 'info', 'text_color': 'white'}"/>
                 </xpath>
-
                 <xpath expr="//form/header" position="after">
                     <div class="o_form_statusbar"
                          groups="wb_sale_wholesale_approval.group_sales_wholesale_user"
-                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done']), ('data_is_wholesale_sale', '=', False)]}">
+                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done', 'cancel']), ('data_is_wholesale_sale', '=', False)]}">
 
                         <div class="o_statusbar_buttons">
                             <button name="action_set_to_received" type="object"
@@ -75,6 +74,11 @@
                         {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', '=', 'pending')]}
                     </attribute>
                 </xpath>
+
+                <xpath expr="//field[@name='team_id']" position="attributes">
+                    <attribute name="attrs">{'readonly': [('data_is_wholesale_sale', '=', True)]}</attribute>
+                </xpath>
+
             </field>
         </record>
     </data>
