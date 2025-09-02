@@ -24,7 +24,7 @@ class SaleOrder(models.Model):
                 order.data_wholesale_status_display = False
 
     data_finance_approval_status = fields.Selection([
-        ('pending', 'Pendiente de pago'),
+        ('pending', 'Pendiente de comprobante'),
         ('validation', 'En validación'),
         ('collected', 'Pago cobrado'),
         ('rejected', 'Pago rechazado'),
@@ -40,10 +40,101 @@ class SaleOrder(models.Model):
     # Métodos para los botones de cambio de estado
     def action_set_to_receipt_received(self):
         self.ensure_one()
-        # Solo se puede pasar a 'recibido' desde 'pendiente'
+        # Solo se puede pasar a 'comprobante recibido' desde 'pendiente'
         if self.data_finance_approval_status in ['pending']:
 
-            # -------- Buscar y marcar la actividad de pago como hecha -----------------------------
+            # -------- Buscar y marcar la actividad de comprobante de pago como hecha -----------------------------
+            # Referencia al tipo de actividad
+            activity_type_id = self.env.ref('mail.mail_activity_data_todo').id
+            # Referencia al modelo de la orden de venta
+            sale_order_model_id = self.env.ref('sale.model_sale_order').id
+
+            # Buscar la actividad con el dominio
+            activities_to_done = self.env['mail.activity'].search([
+                ('res_id', '=', self.id),
+                ('res_model_id', '=', sale_order_model_id),
+                ('activity_type_id', '=', activity_type_id),
+                ('summary', '=', 'Pendiente de comprobante de pago')
+            ])
+
+            # Marcar las actividades encontradas como hechas
+            if activities_to_done:
+                activities_to_done.action_done()
+
+            # ----------------------------------------------------------------------
+            # Creacion de actividad para verificacion del pago
+            finance_group = self.env.ref('wb_sale_wholesale_approval.group_finance_user')
+            finance_user = self.env['res.users'].search([('groups_id', 'in', finance_group.ids)], limit=1)
+
+            self.data_confirmation_date = datetime.now()
+            # Se agenda la taarea para el mismo dia, colocandola como actividad para el mismo dia
+            date_deadline = datetime.now()
+
+            if finance_user:
+                self.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary=_('Revisión de aprobación financiera'),
+                    note=_('Revisar comrpobante de pago y actualizar el estado financiero de esta orden de venta al mayoreo.'),
+                    user_id=finance_user.id,
+                    date_deadline=date_deadline,
+                )
+            else:
+                self.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary=_('Revisión de aprobación financiera'),
+                    note=_('Revisar comrpobante de pago y actualizar el estado financiero de esta orden de venta al mayoreo.'),
+                    user_id=self.env.user.id,
+                    date_deadline=date_deadline,
+                )
+
+            # ----------------------------------------------------------------------
+            # Colocar estado en validacion
+            self.write({'data_finance_approval_status': 'validation'})
+
+
+    def action_set_to_collected(self):
+        self.ensure_one()
+        if self.data_finance_approval_status in ['validation']:
+        # --------------------------------------------------------------------------------
+            carrier = self.carrier_selection_relational
+
+            if carrier and carrier.name == 'Pick Up':  # Pickup
+                self.write({
+                    'data_finance_approval_status': 'collected',
+                    'yuju_carrier_tracking_ref': 'Pick-up',
+                    'data_total_carrier_tracking': 1,
+                    #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
+                })
+            elif not carrier:
+                commercial_group = self.env.ref('wb_sale_wholesale_approval.group_sales_commercial_user')
+                commercial_user = self.env['res.users'].search([('groups_id', 'in', commercial_group.ids)], limit=1)
+                date_deadline_carrier = datetime.now()
+
+                # Crear actividad para comercial - asignacion de carrier y guia
+                if commercial_user:
+                    self.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        summary=_('Selección de carrier y generación de guía'),
+                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
+                        user_id=commercial_user.id,
+                        date_deadline=date_deadline_carrier,
+                    )
+                    self.write({'data_finance_approval_status': 'collected', })
+                else:
+                    self.activity_schedule(
+                        'mail.mail_activity_data_todo',
+                        summary=_('Selección de carrier y generación de guía'),
+                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
+                        user_id=self.env.user.id,
+                        date_deadline=date_deadline_carrier,
+                    )
+                    self.write({'data_finance_approval_status': 'collected', })
+
+            else:
+                self.write({'data_finance_approval_status': 'collected', })
+
+            # -----------------------------------------------------------------------
+            # -------- Buscar y marcar la actividad de validacion de pago como hecha -----------------------------
 
             # Referencia al tipo de actividad
             activity_type_id = self.env.ref('mail.mail_activity_data_todo').id
@@ -61,51 +152,6 @@ class SaleOrder(models.Model):
             # Marcar las actividades encontradas como hechas
             if activities_to_done:
                 activities_to_done.action_done()
-
-
-            # ----------------------------------------------------------------------
-            carrier = self.carrier_selection_relational
-
-            if carrier and carrier.name == 'Pick Up': # Pickup
-                self.write({
-                    'data_finance_approval_status': 'validation',
-                    'yuju_carrier_tracking_ref': 'Pick-up',
-                    'data_total_carrier_tracking': 1,
-                    #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
-                })
-            elif not carrier:
-                commercial_group = self.env.ref('wb_sale_wholesale_approval.group_sales_commercial_user')
-                commercial_user = self.env['res.users'].search([('groups_id', 'in', commercial_group.ids)], limit=1)
-                date_deadline_carrier = datetime.now() + timedelta(hours=72)
-
-                # Crear actividad para comercial - asignacion de carrier y guia
-                if commercial_user:
-                    self.activity_schedule(
-                        'mail.mail_activity_data_todo',
-                        summary=_('Selección de carrier y generación de guía'),
-                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
-                        user_id=commercial_user.id,
-                        date_deadline=date_deadline_carrier,
-                    )
-                    self.write({'data_finance_approval_status': 'validation', })
-                else:
-                    self.activity_schedule(
-                        'mail.mail_activity_data_todo',
-                        summary=_('Selección de carrier y generación de guía'),
-                        note=_('Favor de seleccionar carrier y generar la guía para esta orden.'),
-                        user_id=self.env.user.id,
-                        date_deadline=date_deadline_carrier,
-                    )
-                    self.write({'data_finance_approval_status': 'validation', })
-
-            else:
-                self.write({'data_finance_approval_status': 'validation',})
-
-
-    def action_set_to_collected(self):
-        self.ensure_one()
-        if self.data_finance_approval_status in ['validation']:
-            self.write({'data_finance_approval_status': 'collected'})
 
     def action_set_to_rejected(self):
         self.ensure_one()
@@ -150,16 +196,16 @@ class SaleOrder(models.Model):
             if finance_user:
                 self.activity_schedule(
                     'mail.mail_activity_data_todo',
-                    summary=_('Revisión de aprobación financiera'),
-                    note=_('Revisar y aprobar el estado financiero de esta orden de venta al mayoreo.'),
+                    summary=_('Pendiente de comprobante de pago'),
+                    note=_('Dar seguimiento al envío del comprobante de pago correspondiente.'),
                     user_id=finance_user.id,
                     date_deadline=date_deadline,
                 )
             else:
                 self.activity_schedule(
                     'mail.mail_activity_data_todo',
-                    summary=_('Revisión de aprobación financiera'),
-                    note=_('Revisar y aprobar el estado financiero de esta orden de venta al mayoreo.'),
+                    summary=_('Pendiente de comprobante de pago'),
+                    note=_('Dar seguimiento al envío del comprobante de pago correspondiente.'),
                     user_id=self.env.user.id,
                     date_deadline=date_deadline,
                 )
@@ -213,7 +259,7 @@ class SaleOrder(models.Model):
                 vals['team_id'] = team_mayoreo.id
 
         if self.data_is_wholesale_sale:
-            if 'carrier_selection_relational' in vals and vals['carrier_selection_relational']:
+            if 'yuju_carrier_tracking_ref' in vals and vals['yuju_carrier_tracking_ref']:
                 for order in self:
                     carrier_activities = self.env['mail.activity'].search([
                         ('res_id', '=', order.id),

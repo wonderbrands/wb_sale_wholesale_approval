@@ -7,8 +7,8 @@
       <field name="arch" type="xml">
         <xpath expr="//field[@name='partner_id']/ancestor::group[1]" position="after">
           <group string="Información de pago"
-               name="payment_info">
-<!--               attrs="{'invisible': [('data_is_wholesale_sale','=', False)]}">-->
+               name="payment_info"
+               attrs="{'invisible': [('data_is_wholesale_sale','=', False)]}">
 
             <group colspan="2">
                 <field name="data_is_credit_sale"

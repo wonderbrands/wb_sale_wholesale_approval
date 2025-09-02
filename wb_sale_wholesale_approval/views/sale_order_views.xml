@@ -59,7 +59,7 @@
 
                 <xpath expr="//button[@name='action_view_delivery']" position="attributes">
                     <attribute name="attrs">
-                        {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', '=', 'pending')]}
+                        {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', 'in', ['pending','validation'])]}
                     </attribute>
                 </xpath>
 
