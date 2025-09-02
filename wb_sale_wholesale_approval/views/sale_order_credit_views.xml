@@ -5,7 +5,6 @@
       <field name="model">sale.order</field>
       <field name="inherit_id" ref="wb_sale_wholesale_approval.view_order_form_sales_wholesale"/>
       <field name="arch" type="xml">
-          
         <xpath expr="//field[@name='partner_id']/ancestor::group[1]" position="after">
           <group string="Información de pago"
                name="payment_info"
