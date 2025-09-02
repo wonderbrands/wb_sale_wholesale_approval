@@ -40,5 +40,5 @@ class ResPartner(models.Model):
         for partner in self:
             partner.can_edit_credit_limit = (
                     partner.data_credit_approved and
-                    self.env.user.has_group('wb_sale_wholesale_approval.group_sales_wholesale_user')
+                    self.env.user.has_group('wb_sale_wholesale_approval.group_finance_user')
             )
