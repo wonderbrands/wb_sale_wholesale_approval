@@ -8,7 +8,7 @@
 
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="data_is_wholesale_sale"
-                           attrs="{'readonly': ['&amp;', ('state', 'in', ['sale', 'done', 'cancel']), ('data_finance_approval_status', '!=', False)]}"
+                           attrs="{'readonly': ['|',('state', 'in', ['sale', 'done', 'cancel']),('data_finance_approval_status','!=',False)]}"
                            groups="wb_sale_wholesale_approval.group_sales_wholesale_user,wb_sale_wholesale_approval.group_finance_user"/>
                 </xpath>
 

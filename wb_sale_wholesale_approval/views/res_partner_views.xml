@@ -10,7 +10,7 @@
 
         <xpath expr="//page[@name='sales_purchases']" position="inside">
           <group string="Crédito" name="credit_group">
-            <field name="data_credit_approved" groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
+            <field name="data_credit_approved" groups="wb_sale_wholesale_approval.group_finance_user"/>
             <field name="can_edit_credit_limit" invisible="1"/>
             <field name="data_credit_limit" widget="monetary"
                 attrs="{'readonly': [('can_edit_credit_limit','=', False)]}"/>
