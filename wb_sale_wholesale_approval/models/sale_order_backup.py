@@ -25,9 +25,7 @@ class SaleOrder(models.Model):
 
     data_finance_approval_status = fields.Selection([
         ('pending', 'Pendiente de pago'),
-        ('received', 'Pago recibido'),
         ('validation', 'En validación'),
-        ('partially_collected', 'Parcialmente cobrado'),
         ('collected', 'Pago cobrado'),
         ('rejected', 'Pago rechazado'),
     ], string='Estado Financiero', tracking=True, readonly=True, default=False)
@@ -40,7 +38,7 @@ class SaleOrder(models.Model):
 
     # --------------------------------------------------------------------------------
     # Métodos para los botones de cambio de estado
-    def action_set_to_received(self):
+    def action_set_to_receipt_received(self):
         self.ensure_one()
         # Solo se puede pasar a 'recibido' desde 'pendiente'
         if self.data_finance_approval_status in ['pending']:
@@ -70,7 +68,7 @@ class SaleOrder(models.Model):
 
             if carrier and carrier.name == 'Pick Up': # Pickup
                 self.write({
-                    'data_finance_approval_status': 'received',
+                    'data_finance_approval_status': 'validation',
                     'yuju_carrier_tracking_ref': 'Pick-up',
                     'data_total_carrier_tracking': 1,
                     #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
@@ -89,7 +87,7 @@ class SaleOrder(models.Model):
                         user_id=commercial_user.id,
                         date_deadline=date_deadline_carrier,
                     )
-                    self.write({'data_finance_approval_status': 'received', })
+                    self.write({'data_finance_approval_status': 'validation', })
                 else:
                     self.activity_schedule(
                         'mail.mail_activity_data_todo',
@@ -98,31 +96,20 @@ class SaleOrder(models.Model):
                         user_id=self.env.user.id,
                         date_deadline=date_deadline_carrier,
                     )
-                    self.write({'data_finance_approval_status': 'received', })
+                    self.write({'data_finance_approval_status': 'validation', })
 
             else:
-                self.write({'data_finance_approval_status': 'received',})
+                self.write({'data_finance_approval_status': 'validation',})
 
-
-
-    def action_set_to_validation(self):
-        self.ensure_one()
-        if self.data_finance_approval_status in ['received']:
-            self.write({'data_finance_approval_status': 'validation'})
-
-    def action_set_to_partially_collected(self):
-        self.ensure_one()
-        if self.data_finance_approval_status in ['validation']:
-            self.write({'data_finance_approval_status': 'partially_collected'})
 
     def action_set_to_collected(self):
         self.ensure_one()
-        if self.data_finance_approval_status in ['validation', 'partially_collected']:
+        if self.data_finance_approval_status in ['validation']:
             self.write({'data_finance_approval_status': 'collected'})
 
     def action_set_to_rejected(self):
         self.ensure_one()
-        if self.data_finance_approval_status in ['validation', 'partially_collected']:
+        if self.data_finance_approval_status in ['validation']:
 
             # Cerrar actividades pendientes relacionadas con esta orden
             activities_to_done = self.env['mail.activity'].search([

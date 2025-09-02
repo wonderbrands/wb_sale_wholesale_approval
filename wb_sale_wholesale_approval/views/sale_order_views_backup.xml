@@ -25,40 +25,28 @@
                          attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done', 'cancel']), ('data_is_wholesale_sale', '=', False)]}">
 
                         <div class="o_statusbar_buttons">
-                            <button name="action_set_to_received" type="object"
-                                    string="Pago Recibido"
+                            <button name="action_set_to_receipt_received" type="object"
+                                    string="Comprobante Recibido"
                                     class="btn btn-primary"
                                     attrs="{'invisible': [('data_finance_approval_status', '!=', 'pending')]}"
-                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
-
-                            <button name="action_set_to_validation" type="object"
-                                    string="En Validación"
-                                    class="btn btn-primary"
-                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'received')]}"
-                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+                                    groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
 
                             <button name="action_set_to_collected" type="object"
                                     string="Pago Cobrado"
                                     class="btn btn-primary"
-                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation', 'partially_collected'])]}"
-                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
-
-                            <button name="action_set_to_partially_collected" type="object"
-                                    string="Parcialmente Cobrado"
-                                    class="btn btn-secondary"
-                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'validation')]}"
+                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation'])]}"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
 
                             <button name="action_set_to_rejected" type="object"
                                     string="Pago Rechazado"
                                     class="btn btn-danger"
-                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation', 'partially_collected'])]}"
+                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation'])]}"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
                         </div>
 
                         <field name="data_finance_approval_status"
                                widget="statusbar"
-                               statusbar_visible="pending,received,validation,collected"
+                               statusbar_visible="pending,validation,collected"
                                options="{'clickable': False}"
                                readonly="1"/>
                     </div>

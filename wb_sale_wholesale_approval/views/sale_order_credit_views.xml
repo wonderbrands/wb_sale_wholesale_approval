@@ -1,0 +1,31 @@
+<odoo>
+  <data>
+    <record id="view_order_form_sales_wholesale_credit" model="ir.ui.view">
+      <field name="name">sale.order.form.sales.wholesale.credit.box</field>
+      <field name="model">sale.order</field>
+      <field name="inherit_id" ref="wb_sale_wholesale_approval.view_order_form_sales_wholesale"/>
+      <field name="arch" type="xml">
+          
+        <xpath expr="//field[@name='partner_id']/ancestor::group[1]" position="after">
+          <group string="Información de pago"
+               name="payment_info"
+               attrs="{'invisible': [('data_is_wholesale_sale','=', False)]}">
+
+            <group colspan="2">
+                <field name="data_is_credit_sale"
+                       attrs="{'readonly': [('state', 'in', ['sale', 'done', 'cancel'])]}"/>
+                <field name="data_partner_credit_limit_amount" readonly="1"/>
+            </group>
+            <group colspan="2">
+                <field name="data_total_order_amount" readonly="1"/>
+                <field name="data_credit_amount"
+                       attrs="{'readonly': ['|',('state', 'in', ['sale', 'done', 'cancel']),('data_is_credit_sale','=', False)]}"/>
+                <field name="data_debit_amount" readonly="1"/>
+            </group>
+        </group>
+        </xpath>
+
+      </field>
+    </record>
+  </data>
+</odoo>
