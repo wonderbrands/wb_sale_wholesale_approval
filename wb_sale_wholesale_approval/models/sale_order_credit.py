@@ -19,9 +19,16 @@ class SaleOrder(models.Model):
         currency_field='currency_id'
     )
 
+    data_partner_credit_approved = fields.Boolean(
+        string='Crédito aprobado (cliente)',
+        related='partner_id.data_credit_approved',
+        store=False,
+        readonly=True
+    )
+
     # ------------------------- Calculados ----------------------------------------------
     data_debit_amount = fields.Monetary(
-        string='Pago con débito',
+        string='Pago de contado',
         currency_field='currency_id',
         compute='_compute_credit_split',
         store=False,

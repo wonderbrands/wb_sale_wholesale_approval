@@ -12,23 +12,25 @@ class ResPartner(models.Model):
     )
 
     # Moneda del límite de crédito (la default)
-    data_credit_currency_id = fields.Many2one(
-        'res.currency',
-        string='Moneda del crédito',
-        related='company_id.currency_id',
-        readonly=True,
-        store=True
+    data_credit_currency_id = fields.Many2one('res.currency', string="Moneda", default=lambda self: self.env.company.currency_id.id)
+
+    # Valor editable real (solo si está aprobado)
+    data_credit_limit_raw = fields.Monetary(
+        string='Editar límite de crédito',
+        currency_field='data_credit_currency_id',
+        default=0.0,
     )
 
-    # Límite de crédito en moneda de la compañía
+    # Valor mostrado al usuario
     data_credit_limit = fields.Monetary(
         string='Límite de crédito',
         currency_field='data_credit_currency_id',
+        compute='_compute_data_credit_limit',
+        store=False,
         default=0.0,
-        help='Monto máximo de crédito autorizado para este contacto.'
     )
 
-    # control de edit del campo 'data_credit_limit'
+    # Campo funcional para controlar si el usuario puede editar el límite de crédito
     can_edit_credit_limit = fields.Boolean(
         string='Puede editar límite de crédito',
         compute='_compute_can_edit_credit_limit',
@@ -39,6 +41,14 @@ class ResPartner(models.Model):
     def _compute_can_edit_credit_limit(self):
         for partner in self:
             partner.can_edit_credit_limit = (
-                    partner.data_credit_approved and
-                    self.env.user.has_group('wb_sale_wholesale_approval.group_finance_user')
+                    partner.data_credit_approved
+                    and self.env.user.has_group('wb_sale_wholesale_approval.group_finance_user')
             )
+
+    @api.depends('data_credit_approved', 'data_credit_limit_raw')
+    def _compute_data_credit_limit(self):
+        for partner in self:
+            if partner.data_credit_approved:
+                partner.data_credit_limit = partner.data_credit_limit_raw
+            else:
+                partner.data_credit_limit = 0.0

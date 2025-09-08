@@ -12,8 +12,17 @@
           <group string="Crédito" name="credit_group">
             <field name="data_credit_approved" groups="wb_sale_wholesale_approval.group_finance_user"/>
             <field name="can_edit_credit_limit" invisible="1"/>
-            <field name="data_credit_limit" widget="monetary"
-                attrs="{'readonly': [('can_edit_credit_limit','=', False)]}"/>
+            <field name="data_credit_currency_id" invisible="1"/>
+            <field name="data_credit_limit_raw"
+               widget="monetary"
+               attrs="{'invisible': [('can_edit_credit_limit', '=', False)]}"/>
+            <field name="data_credit_limit"
+               widget="badge"
+               decoration-success="data_credit_approved"
+               decoration-danger="data_credit_approved == False"
+               options="{'currency_field': 'data_credit_currency_id'}"
+               readonly="1"/>
+
           </group>
         </xpath>
       </field>
