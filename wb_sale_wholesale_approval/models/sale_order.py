@@ -191,22 +191,31 @@ class SaleOrder(models.Model):
 
             self.data_confirmation_date = datetime.now()
             self.data_finance_approval_status = 'pending'
-            date_deadline = datetime.now() + timedelta(hours=72)
 
-            if finance_user:
+            # ---------------------------------------------------------
+            if self.data_is_credit_sale and self.data_debit_amount == 0:
+                # Pago 100% a crédito, saltar a VALIDATION
+                self.data_finance_approval_status = 'validation'
+
+                # Crear actividad para revisión financiera directamente
+                date_deadline = datetime.now()
                 self.activity_schedule(
                     'mail.mail_activity_data_todo',
-                    summary=_('Pendiente de comprobante de pago'),
-                    note=_('Dar seguimiento al envío del comprobante de pago correspondiente.'),
-                    user_id=finance_user.id,
+                    summary=_('Revisión de aprobación financiera'),
+                    note=_('Pago 100% con crédito: revisar y validar el crédito disponible del cliente.'),
+                    user_id=finance_user.id if finance_user else self.env.user.id,
                     date_deadline=date_deadline,
                 )
             else:
+                # Caso normal, va a PENDING comprobante
+                self.data_finance_approval_status = 'pending'
+                date_deadline = datetime.now() + timedelta(hours=72)
+
                 self.activity_schedule(
                     'mail.mail_activity_data_todo',
                     summary=_('Pendiente de comprobante de pago'),
                     note=_('Dar seguimiento al envío del comprobante de pago correspondiente.'),
-                    user_id=self.env.user.id,
+                    user_id=finance_user.id if finance_user else self.env.user.id,
                     date_deadline=date_deadline,
                 )
 
