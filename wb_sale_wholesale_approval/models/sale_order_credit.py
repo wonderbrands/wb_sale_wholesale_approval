@@ -52,7 +52,7 @@ class SaleOrder(models.Model):
         readonly=True
     )
 
-    @api.depends('partner_id')
+    @api.depends('partner_id', 'partner_id.data_credit_limit')
     def _compute_partner_credit_info(self):
         """El límite del cliente siempre está en la moneda de la compañía."""
         for order in self:

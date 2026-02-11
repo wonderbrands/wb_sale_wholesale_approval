@@ -7,19 +7,23 @@
       <field name="arch" type="xml">
         <xpath expr="//field[@name='partner_id']/ancestor::group[1]" position="after">
           <group string="Información de pago"
-               name="payment_info" attrs="{'invisible': [('data_is_wholesale_sale','=', False)]}">
+                 name="payment_info" 
+                 invisible="not data_is_wholesale_sale">
 
             <group colspan="2">
                 <field name="data_partner_credit_approved" invisible="1"/>
+                
                 <field name="data_is_credit_sale"
-                       attrs="{'readonly': ['|', ('state', 'in', ['sale', 'done', 'cancel']), ('data_partner_credit_approved', '=', False)]}"/>
-                <field name="data_partner_credit_limit_amount" readonly="1" widget="badge" decoration-info="1"
-/>
+                       readonly="state in ['sale', 'cancel'] or not data_partner_credit_approved"/>
+                       
+                <field name="data_partner_credit_limit_amount" readonly="1" widget="badge" decoration-info="1"/>
             </group>
             <group colspan="2">
                 <field name="data_total_order_amount" readonly="1"/>
+                
                 <field name="data_credit_amount"
-                       attrs="{'readonly': ['|',('state', 'in', ['sale', 'done', 'cancel']),('data_is_credit_sale','=', False)]}"/>
+                       readonly="state in ['sale', 'cancel'] or not data_is_credit_sale"/>
+                       
                 <field name="data_debit_amount" readonly="1"/>
             </group>
         </group>

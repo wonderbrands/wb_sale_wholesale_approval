@@ -50,7 +50,7 @@ class SaleOrder(models.Model):
             sale_order_model_id = self.env.ref('sale.model_sale_order').id
 
             # Buscar la actividad con el dominio
-            activities_to_done = self.env['mail.activity'].search([
+            activities_to_lock = self.env['mail.activity'].search([
                 ('res_id', '=', self.id),
                 ('res_model_id', '=', sale_order_model_id),
                 ('activity_type_id', '=', activity_type_id),
@@ -58,8 +58,8 @@ class SaleOrder(models.Model):
             ])
 
             # Marcar las actividades encontradas como hechas
-            if activities_to_done:
-                activities_to_done.action_done()
+            if activities_to_lock:
+                activities_to_lock.action_done()
 
             # ----------------------------------------------------------------------
             # Creacion de actividad para verificacion del pago
@@ -142,7 +142,7 @@ class SaleOrder(models.Model):
             sale_order_model_id = self.env.ref('sale.model_sale_order').id
 
             # Buscar la actividad con el dominio
-            activities_to_done = self.env['mail.activity'].search([
+            activities_to_lock = self.env['mail.activity'].search([
                 ('res_id', '=', self.id),
                 ('res_model_id', '=', sale_order_model_id),
                 ('activity_type_id', '=', activity_type_id),
@@ -150,20 +150,20 @@ class SaleOrder(models.Model):
             ])
 
             # Marcar las actividades encontradas como hechas
-            if activities_to_done:
-                activities_to_done.action_done()
+            if activities_to_lock:
+                activities_to_lock.action_done()
 
     def action_set_to_rejected(self):
         self.ensure_one()
         if self.data_finance_approval_status in ['validation']:
 
             # Cerrar actividades pendientes relacionadas con esta orden
-            activities_to_done = self.env['mail.activity'].search([
+            activities_to_lock = self.env['mail.activity'].search([
                 ('res_id', '=', self.id),
                 ('res_model', '=', 'sale.order'),
             ])
-            if activities_to_done:
-                activities_to_done.action_done()
+            if activities_to_lock:
+                activities_to_lock.action_done()
 
             # Validar que no haya fecha efectiva y que el estado WMS no sea Despachado
             if not self.effective_date and self.wms_status != 'DESP':
@@ -244,13 +244,13 @@ class SaleOrder(models.Model):
         for order in self:
             if order.data_is_wholesale_sale:
                 # Cerrar actividades pendientes
-                activities_to_done = self.env['mail.activity'].search([
+                activities_to_lock = self.env['mail.activity'].search([
                     ('res_id', '=', order.id),
                     ('res_model', '=', 'sale.order'),
                 ])
 
-                if activities_to_done:
-                    activities_to_done.action_done()
+                if activities_to_lock:
+                    activities_to_lock.action_done()
 
                 # Limpiar estado financiero
                 order.data_finance_approval_status = False
@@ -322,7 +322,7 @@ class SaleOrder(models.Model):
         domain = [
             ('data_is_wholesale_sale', '=', True),  # Venta al mayoreo
             ('data_finance_approval_status', '=', 'pending'),  # Sigue con estado financiero 'Pendiente de Pago'
-            ('state', 'in', ['sale', 'done']),  # Estado de la orden 'Orden de vcenta' o 'Bloqueado'
+            ('state', 'in', ['sale']),  # Estado de la orden 'Orden de venta (peude estar o no BLOQUEADA en odoo 18)
             ('data_confirmation_date', '<', limit_date.strftime('%Y-%m-%d %H:%M:%S'))
             # Ordenes con mas de 144 horas de confirmadas
         ]
@@ -356,7 +356,7 @@ class SaleOrder(models.Model):
 
         orders_to_remind = self.env['sale.order'].search([
             ('id', 'in', overdue_activities.mapped('res_id')),
-            ('state', 'in', ['sale', 'done']),
+            ('state', 'in', ['sale']),
             ('data_is_wholesale_sale', '=', True),
             ('data_finance_approval_status', '=', 'pending'),
         ])

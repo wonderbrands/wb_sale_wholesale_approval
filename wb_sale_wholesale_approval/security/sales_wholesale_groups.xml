@@ -12,6 +12,5 @@
         <record id="group_sales_commercial_user" model="res.groups">
             <field name="name">Ventas / Comercial</field>
         </record>
-
     </data>
 </odoo>

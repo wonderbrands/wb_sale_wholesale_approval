@@ -37,7 +37,9 @@ class ResPartner(models.Model):
         readonly=True
     )
 
+    # MEJORA ODOO 18: depends_context('uid') para evitar problemas de caché entre usuarios
     @api.depends('data_credit_approved')
+    @api.depends_context('uid')
     def _compute_can_edit_credit_limit(self):
         for partner in self:
             partner.can_edit_credit_limit = (

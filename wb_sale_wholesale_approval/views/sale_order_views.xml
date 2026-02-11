@@ -8,7 +8,7 @@
 
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="data_is_wholesale_sale"
-                           attrs="{'readonly': ['|',('state', 'in', ['sale', 'done', 'cancel']),('data_finance_approval_status','!=',False)]}"
+                           readonly="state in ['sale', 'cancel'] or data_finance_approval_status"
                            groups="wb_sale_wholesale_approval.group_sales_wholesale_user,wb_sale_wholesale_approval.group_finance_user"/>
                 </xpath>
 
@@ -16,31 +16,32 @@
                     <field name="data_wholesale_status_display"
                            class="oe_right"
                            widget="badge"
-                           attrs="{'invisible': [('data_wholesale_status_display', '=', False)]}"
+                           invisible="not data_wholesale_status_display"
                            options="{'bg_color': 'info', 'text_color': 'white'}"/>
                 </xpath>
+                
                 <xpath expr="//form/header" position="after">
                     <div class="o_form_statusbar"
                          groups="wb_sale_wholesale_approval.group_sales_wholesale_user"
-                         attrs="{'invisible': ['|', ('state', 'not in', ['sale', 'done', 'cancel']), ('data_is_wholesale_sale', '=', False)]}">
+                         invisible="state not in ['sale', 'cancel'] or not data_is_wholesale_sale">
 
                         <div class="o_statusbar_buttons">
                             <button name="action_set_to_receipt_received" type="object"
                                     string="Comprobante Recibido"
                                     class="btn btn-primary"
-                                    attrs="{'invisible': [('data_finance_approval_status', '!=', 'pending')]}"
+                                    invisible="data_finance_approval_status != 'pending'"
                                     groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
 
                             <button name="action_set_to_collected" type="object"
                                     string="Pago Cobrado"
                                     class="btn btn-primary"
-                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation'])]}"
+                                    invisible="data_finance_approval_status != 'validation'"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
 
                             <button name="action_set_to_rejected" type="object"
                                     string="Pago Rechazado"
                                     class="btn btn-danger"
-                                    attrs="{'invisible': [('data_finance_approval_status', 'not in', ['validation'])]}"
+                                    invisible="data_finance_approval_status != 'validation'"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
                         </div>
 
@@ -54,17 +55,17 @@
 
                 <xpath expr="//field[@name='date_order']" position="after">
                     <field name="data_confirmation_date"
-                           attrs="{'invisible': ['|', ('data_is_wholesale_sale', '=', False), ('state', 'not in', ['sale', 'done'])]}"/>
+                           invisible="not data_is_wholesale_sale or state != 'sale'"/>
                 </xpath>
 
                 <xpath expr="//button[@name='action_view_delivery']" position="attributes">
-                    <attribute name="attrs">
-                        {'invisible': ['|', ('delivery_count', '=', 0), '&amp;', ('data_is_wholesale_sale', '=', True), ('data_finance_approval_status', 'in', ['pending','validation'])]}
+                    <attribute name="invisible">
+                        delivery_count == 0 or (data_is_wholesale_sale and data_finance_approval_status in ['pending', 'validation'])
                     </attribute>
                 </xpath>
 
                 <xpath expr="//field[@name='team_id']" position="attributes">
-                    <attribute name="attrs">{'readonly': [('data_is_wholesale_sale', '=', True)]}</attribute>
+                    <attribute name="readonly">data_is_wholesale_sale</attribute>
                 </xpath>
                 
             </field>

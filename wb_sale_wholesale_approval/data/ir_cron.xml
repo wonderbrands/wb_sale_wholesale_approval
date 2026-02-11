@@ -7,8 +7,6 @@
             <field name="code">model._cron_send_payment_reminder_message()</field>
             <field name="interval_number">24</field>
             <field name="interval_type">hours</field>
-            <field name="numbercall">-1</field>
-            <field name="doall">False</field>
         </record>
 
         <record id="ir_cron_auto_cancel_old_orders" model="ir.cron">
@@ -18,8 +16,6 @@
             <field name="code">model._cron_auto_cancel_old_orders()</field>
             <field name="interval_number">24</field>
             <field name="interval_type">hours</field>
-            <field name="numbercall">-1</field>
-            <field name="doall">False</field>
         </record>
     </data>
 </odoo>
