@@ -96,7 +96,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         if self.data_finance_approval_status in ['validation']:
         # --------------------------------------------------------------------------------
-            carrier = self.carrier_selection_relational
+            carrier = self.data_carrier_selection_relational
 
             if carrier and carrier.name == 'Pick Up':  # Pickup
                 self.write({
