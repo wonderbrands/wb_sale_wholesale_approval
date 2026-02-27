@@ -13,7 +13,9 @@
     'depends': [
         'sale',
         'sale_management',
-        'stock'
+        'stock',
+        'madkting', #por elcampo no. de guia
+        'WB_data_sale_order'
     ],
     'data': [
         'security/sales_wholesale_groups.xml', # antes de las vistas

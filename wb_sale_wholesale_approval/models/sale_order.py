@@ -102,7 +102,7 @@ class SaleOrder(models.Model):
                 self.write({
                     'data_finance_approval_status': 'collected',
                     'yuju_carrier_tracking_ref': 'Pick-up',
-                    'data_total_carrier_tracking': 1,
+                    #'data_total_carrier_tracking': 1, # YA NO EXISTE EN V18
                     #'channel_order_reference': 1, # Ejemplo para local (No hay campo total de guias)
                 })
             elif not carrier:

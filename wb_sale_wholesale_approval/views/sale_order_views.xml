@@ -12,12 +12,12 @@
                            groups="wb_sale_wholesale_approval.group_sales_wholesale_user,wb_sale_wholesale_approval.group_finance_user"/>
                 </xpath>
 
-                <xpath expr="//field[@name='name']" position="after">
-                    <field name="data_wholesale_status_display"
-                           class="oe_right"
-                           widget="badge"
-                           invisible="not data_wholesale_status_display"
-                           options="{'bg_color': 'info', 'text_color': 'white'}"/>
+                <xpath expr="//div[hasclass('oe_title')]" position="before">
+                    <div class="badge rounded-pill text-bg-secondary float-end fs-6 border-0 mt-2"
+                        style="clear: right;"
+                        invisible="not data_wholesale_status_display">
+                        <field name="data_wholesale_status_display" nolabel="1"/>
+                    </div>
                 </xpath>
                 
                 <xpath expr="//form/header" position="after">
