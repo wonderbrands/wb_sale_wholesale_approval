@@ -2,7 +2,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
-
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -19,10 +18,30 @@ class SaleOrder(models.Model):
         currency_field='currency_id'
     )
 
+    # ------------------------- Datos congelados al bloquear o cancelar orden -----------------------
     data_partner_credit_approved = fields.Boolean(
-        string='Crédito aprobado (cliente)',
-        related='partner_id.data_credit_approved',
-        store=False,
+        string='Crédito aprobado (Histórico)',
+        help='Indica si el cliente tenía el crédito aprobado al momento de procesar esta venta.',
+        compute='_compute_partner_credit_snapshot',
+        store=True,
+        readonly=True
+    )
+
+    data_partner_credit_limit_amount = fields.Monetary(
+        string='Límite de crédito (Histórico)',
+        help='El límite de crédito total que tenía el cliente al momento de esta venta.',
+        currency_field='currency_id',
+        compute='_compute_partner_credit_snapshot',
+        store=True,
+        readonly=True
+    )
+
+    data_partner_credit_available_amount = fields.Monetary(
+        string='Crédito disponible (Histórico)',
+        help='El saldo a favor que tenía disponible el cliente al momento exacto de esta venta.',
+        currency_field='currency_id',
+        compute='_compute_partner_credit_snapshot',
+        store=True,
         readonly=True
     )
 
@@ -43,21 +62,28 @@ class SaleOrder(models.Model):
         readonly=True
     )
 
-    # Mostrar el límite de crédito del cliente
-    data_partner_credit_limit_amount = fields.Monetary(
-        string='Límite de crédito (cliente)',
-        currency_field='currency_id',
-        compute='_compute_partner_credit_info',
-        store=False,
-        readonly=True
-    )
-
-    @api.depends('partner_id', 'partner_id.data_credit_limit')
-    def _compute_partner_credit_info(self):
-        """El límite del cliente siempre está en la moneda de la compañía."""
+    # =======================================================================
+    # LÓGICA DE CÁLCULO Y CONGELAMIENTO
+    # =======================================================================
+    @api.depends('partner_id.data_credit_approved', 'partner_id.data_credit_limit', 'partner_id.data_credit_available', 'state', 'locked','data_use_automated_credit')
+    def _compute_partner_credit_snapshot(self):
+        """
+        Actúa como un 'related' mientras la orden está en borrador.
+        Si la orden se bloquea (locked=True) o se cancela, conserva su valor histórico.
+        """
         for order in self:
-            partner_limit = order.partner_id.data_credit_limit or 0.0
-            order.data_partner_credit_limit_amount = partner_limit
+            is_frozen = order.locked or order.state == 'cancel'
+
+            if is_frozen:
+                #Se reasigna su propio valor actual. Así se congela para siempre en la BD, para la orden
+                order.data_partner_credit_approved = order.data_partner_credit_approved
+                order.data_partner_credit_limit_amount = order.data_partner_credit_limit_amount
+                order.data_partner_credit_available_amount = order.data_partner_credit_available_amount
+            else:
+                #Si no está bloqueada, copiamos los datos en vivo del cliente
+                order.data_partner_credit_approved = order.partner_id.data_credit_approved
+                order.data_partner_credit_limit_amount = order.partner_id.data_credit_limit or 0.0
+                order.data_partner_credit_available_amount = order.partner_id.data_credit_available or 0.0
 
     @api.depends('amount_total', 'data_credit_amount', 'data_is_credit_sale')
     def _compute_credit_split(self):
@@ -88,15 +114,25 @@ class SaleOrder(models.Model):
             if not order.data_is_credit_sale:
                 continue
 
-            # Solo lo pongo por contingencia, pero se manejan en '_onchange_credit_amount'
             if order.data_credit_amount > order.amount_total + 1e-6:
                 raise ValidationError("El pago con crédito no puede ser mayor al total de la orden.")
             if order.data_credit_amount < -1e-6:
                 raise ValidationError("El pago con crédito no puede ser negativo.")
 
-
-            partner_limit = order.partner_id.data_credit_limit or 0.0
-            if order.data_credit_amount > partner_limit:
-                raise ValidationError(
-                    f"El pago con crédito no puede superar el límite del cliente ({partner_limit})."
-                )
+            #Se valida siempre calculando la deuda en TIEMPO REAL en la base de datos.
+            if order.state in ['draft', 'sent']:
+                
+                live_available = order.partner_id.data_credit_available
+                
+                if order.data_credit_amount > live_available:
+                    raise ValidationError(
+                        f"El cliente no tiene suficiente crédito disponible para esta operación.\n"
+                        f"Monto solicitado: ${order.data_credit_amount}\n"
+                        f"Crédito disponible real: ${live_available}"
+                    )
+                    
+    # --------------------------------------------------------------------------------------------------------------------
+    data_use_automated_credit = fields.Boolean(
+        related='company_id.data_use_automated_credit',
+        string="Usa cálculo automático"
+    )

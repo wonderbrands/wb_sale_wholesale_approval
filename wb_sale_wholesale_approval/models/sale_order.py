@@ -165,10 +165,11 @@ class SaleOrder(models.Model):
             if activities_to_lock:
                 activities_to_lock.action_done()
 
-            # Validar que no haya fecha efectiva y que el estado WMS no sea Despachado
-            if not self.effective_date and self.wms_status != 'DESP':
-                # Cancelar la orden de venta
-                self.action_cancel()
+            # Validar que no haya fecha efectiva
+            if not self.effective_date:
+                # Cancelar la orden de venta FORZADAMENTE
+                self.action_unlock()
+                self._action_cancel()
                 self.message_post(
                     body=_("La orden de venta ha sido cancelada debido al rechazo del pago.")
                 )
@@ -176,7 +177,7 @@ class SaleOrder(models.Model):
                 # Si no cumple condiciones, solo dejar el estado financiero en 'rejected'
                 self.message_post(
                     body=_(
-                        "El pago ha sido rechazado, pero la orden no fue cancelada porque ya tiene fecha efectiva y está despachada en WMS.")
+                        "El pago ha sido rechazado, pero la orden no fue cancelada porque ya tiene fecha efectiva")
                 )
 
             self.write({'data_finance_approval_status': 'rejected'})
@@ -243,7 +244,7 @@ class SaleOrder(models.Model):
     def action_cancel(self):
         for order in self:
             if order.data_is_wholesale_sale:
-                # Cerrar actividades pendientes
+                #Cerrar actividades pendientes
                 activities_to_lock = self.env['mail.activity'].search([
                     ('res_id', '=', order.id),
                     ('res_model', '=', 'sale.order'),
@@ -252,9 +253,9 @@ class SaleOrder(models.Model):
                 if activities_to_lock:
                     activities_to_lock.action_done()
 
-                # Limpiar estado financiero
+                #Limpiar estado financiero
                 order.data_finance_approval_status = False
-
+                
         return super(SaleOrder, self).action_cancel()
 
 
@@ -305,7 +306,6 @@ class SaleOrder(models.Model):
             pass
 
     # ----------------------------------------------------------------------------------
-
     # Lógica para la cancelación automática después de 144 horas
     @api.model
     def _cron_auto_cancel_old_orders(self):
@@ -315,29 +315,36 @@ class SaleOrder(models.Model):
         """
         _logger.info("El cron de cancelación de órdenes se está ejecutando.")
 
-        # Define la fecha límite: hace 144 horas (6 días)
-        limit_date = datetime.now() - timedelta(hours=144)
+        limit_date = fields.Datetime.now() - timedelta(hours=144)
 
-        # Busca las órdenes que cumplen las condiciones:
         domain = [
-            ('data_is_wholesale_sale', '=', True),  # Venta al mayoreo
-            ('data_finance_approval_status', '=', 'pending'),  # Sigue con estado financiero 'Pendiente de Pago'
-            ('state', 'in', ['sale']),  # Estado de la orden 'Orden de venta (peude estar o no BLOQUEADA en odoo 18)
-            ('data_confirmation_date', '<', limit_date.strftime('%Y-%m-%d %H:%M:%S'))
-            # Ordenes con mas de 144 horas de confirmadas
+            ('data_is_wholesale_sale', '=', True),  
+            ('data_finance_approval_status', '=', 'pending'),  
+            ('state', '=', 'sale'), # En Odoo 18 solo se evalua 'sale'
+            ('data_confirmation_date', '<', limit_date) # Odoo ya acepta el objeto Datetime directo, no necesitas strftime
         ]
+        
         old_orders = self.env['sale.order'].search(domain)
-        _logger.info("Se encontraron %d órdenes antiguas que serán canceladas.", len(old_orders))
+        _logger.info(f"Se encontraron {len(old_orders)} órdenes antiguas que serán canceladas.")
 
         # Cancela las órdenes encontradas
         for order in old_orders:
             # Cancela la orden
             # Logica de cerrar actividades y status financiero a False, estan de action_cancel de este script
-            order.action_cancel()
+            order._action_cancel()
+            # Limpiar tus campos manualmente, porque _action_cancel a veces se salta tu action_cancel
+            if order.data_is_wholesale_sale:
+                order.data_finance_approval_status = False
+                activities_to_lock = self.env['mail.activity'].search([
+                    ('res_id', '=', order.id),
+                    ('res_model', '=', 'sale.order'),
+                ])
+                if activities_to_lock:
+                    activities_to_lock.action_done()
+            
             order.message_post(
                 body="La orden de venta ha sido cancelada automáticamente por superar el plazo de 6 días sin confirmación de pago.")
-            _logger.info("La orden de venta %s ha sido cancelada.", order.name)
-        _logger.info("El cron de cancelación de órdenes ha finalizado.")
+            _logger.info(f"La orden de venta {order.name} ha sido cancelada.")
 
     # ----------------------------------------------------------------------------------
     # Lógica para el aviso en el chatter de órdenes pendientes
@@ -346,39 +353,42 @@ class SaleOrder(models.Model):
         _logger.info("El cron de aviso 'pago pendiente ventas mayoreo' se está ejecutando.")
 
         activity_type_id = self.env.ref('mail.mail_activity_data_todo').id
-        now = datetime.now()
+        
+        today = fields.Date.today()
 
         overdue_activities = self.env['mail.activity'].search([
             ('res_model_id', '=', self.env.ref('sale.model_sale_order').id),
             ('activity_type_id', '=', activity_type_id),
-            ('date_deadline', '<', now)
+            ('summary', '=', 'Pendiente de comprobante de pago'), #evitar spam falso!
+            ('date_deadline', '<', today)
         ])
+
+        if not overdue_activities:
+            _logger.info("No hay actividades de cobro vencidas. Fin del cron.")
+            return
 
         orders_to_remind = self.env['sale.order'].search([
             ('id', 'in', overdue_activities.mapped('res_id')),
-            ('state', 'in', ['sale']),
+            ('state', '=', 'sale'),
             ('data_is_wholesale_sale', '=', True),
             ('data_finance_approval_status', '=', 'pending'),
         ])
 
-        _logger.info("Se encontraron %d órdenes de venta que necesitan un aviso de pago.", len(orders_to_remind))
+        _logger.info(f"Se encontraron {len(orders_to_remind)} órdenes de venta que necesitan un aviso de pago.")
 
         for order in orders_to_remind:
             message_body = "El pago de esta orden de venta al mayoreo está vencido. Por favor, revísalo y actualiza el estado financiero."
 
             # Obtiene el ID del vendedor asignado a la orden
             if order.user_id:
-                author_id = order.user_id.partner_id.id
                 order.message_post(
                     body=message_body,
                     message_type='comment',
                     subtype_xmlid='mail.mt_comment',
-                    author_id=author_id
+                    author_id=order.user_id.partner_id.id
                 )
-                _logger.info("Se envió un aviso para la orden %s, remitente: %s.", order.name,
-                             order.user_id.name)
+                _logger.info(f"Se envió un aviso para la orden {order.name}, remitente: {order.user_id.name}.")
             else:
-                _logger.warning("No se encontró un vendedor asignado para la orden %s. No se pudo enviar el aviso.",
-                                order.name)
+                _logger.warning(f"No se encontró un vendedor asignado para la orden {order.name}. No se pudo enviar el aviso.")
 
         _logger.info("El cron de aviso 'pago pendiente ventas mayoreo' ha finalizado.")

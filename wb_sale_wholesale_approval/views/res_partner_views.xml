@@ -21,6 +21,11 @@
                    decoration-success="data_credit_approved"
                    decoration-danger="not data_credit_approved"
                    readonly="1"/>
+            
+            <field name="data_credit_available"
+            widget="monetary"
+            decoration-danger="data_credit_available &lt;= 0"
+            decoration-success="data_credit_available &gt; 0"/>
           </group>
         </xpath>
 

@@ -28,19 +28,19 @@
                         <div class="o_statusbar_buttons">
                             <button name="action_set_to_receipt_received" type="object"
                                     string="Comprobante Recibido"
-                                    class="btn btn-primary"
+                                    class="btn btn-primary mb-2"
                                     invisible="data_finance_approval_status != 'pending'"
                                     groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
 
                             <button name="action_set_to_collected" type="object"
                                     string="Pago Cobrado"
-                                    class="btn btn-primary"
+                                    class="btn btn-primary me-2 mb-2"
                                     invisible="data_finance_approval_status != 'validation'"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
 
                             <button name="action_set_to_rejected" type="object"
                                     string="Pago Rechazado"
-                                    class="btn btn-danger"
+                                    class="btn btn-danger mb-2"
                                     invisible="data_finance_approval_status != 'validation'"
                                     groups="wb_sale_wholesale_approval.group_finance_user"/>
                         </div>

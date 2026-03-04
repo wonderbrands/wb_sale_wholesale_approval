@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
     <record id="view_order_form_sales_wholesale_credit" model="ir.ui.view">
@@ -13,11 +14,36 @@
             <group colspan="2">
                 <field name="data_partner_credit_approved" invisible="1"/>
                 
+                <field name="data_use_automated_credit" invisible="1"/>
+
                 <field name="data_is_credit_sale"
                        readonly="state in ['sale', 'cancel'] or not data_partner_credit_approved"/>
-                       
-                <field name="data_partner_credit_limit_amount" readonly="1" widget="badge" decoration-info="1"/>
+
+                <label for="data_partner_credit_limit_amount" invisible="not data_is_credit_sale"/>
+                <div class="o_row" invisible="not data_is_credit_sale">
+                    <span class="badge rounded-pill text-bg-info fs-6">
+                        <field name="data_partner_credit_limit_amount" readonly="1" nolabel="1"/>
+                    </span>
+                </div>
+
+                <label for="data_partner_credit_available_amount" 
+                       invisible="not data_is_credit_sale or not data_use_automated_credit"/>
+                <div class="o_row" 
+                     invisible="not data_is_credit_sale or not data_use_automated_credit">
+                    
+                    <span class="badge rounded-pill text-bg-danger fs-6" 
+                          invisible="data_partner_credit_available_amount &gt; 0">
+                        <field name="data_partner_credit_available_amount" readonly="1" nolabel="1"/>
+                    </span>
+                    
+                    <span class="badge rounded-pill text-bg-success fs-6" 
+                          invisible="data_partner_credit_available_amount &lt;= 0">
+                        <field name="data_partner_credit_available_amount" readonly="1" nolabel="1"/>
+                    </span>
+                </div>
+                
             </group>
+            
             <group colspan="2">
                 <field name="data_total_order_amount" readonly="1"/>
                 

@@ -1,1 +1,1 @@
-from . import sale_order, res_partner, sale_order_credit
+from . import sale_order, res_partner, sale_order_credit, res_config_settings
