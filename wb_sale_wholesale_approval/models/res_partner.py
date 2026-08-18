@@ -77,13 +77,8 @@ class ResPartner(models.Model):
     @api.depends(
         'data_credit_limit', 
         'credit', 
-        'sale_order_ids.state', 
-        'sale_order_ids.invoice_status',
-        'sale_order_ids.data_credit_amount', 
-        'sale_order_ids.data_is_credit_sale', 
         'company_id.data_use_automated_credit'
     )
-    @api.depends_context('uid', 'company') #Rompe la caché al recargar la vista
     def _compute_credit_available(self):
         for partner in self:
             partner.data_credit_available = 0.0
@@ -116,18 +111,35 @@ class ResPartner(models.Model):
                 ('data_is_credit_sale', '=', True)
             ]
             
-            transit_orders = self.env['sale.order'].search(domain)
-            
+            # Agregación en SQL (read_group): NO materializamos el recordset de
+            # orders en la caché de Python, evitando el pico de RAM al descargar
+            # el commit en procesos masivos (validación de lotes de stock).
+            transit_rows = self.env['sale.order'].read_group(
+                domain,
+                ['data_credit_amount:sum'],
+                ['partner_id'],
+            )
+            transit_debt = sum((row['data_credit_amount'] or 0.0) for row in transit_rows)
 
-            transit_debt = sum(transit_orders.mapped('data_credit_amount'))
-
-            #ecuación:
+#ecuación:
             #credito_disponible = limite_credito - facturas_sin_pagar - debito_en_transito
             remaining_credit = partner.data_credit_limit - invoiced_debt - transit_debt
             
             partner.data_credit_available = max(0.0, remaining_credit)
-            
-            # _logger.info('\n\n\n\n --------------------------------------- ')
-            # _logger.info(f'{use_automated},{invoiced_debt}, {real_partner_id}')
-            # _logger.info(f'{transit_orders}, {transit_debt}, {remaining_credit}')
-            # _logger.info('--------------------------------------- \n\n\n\n ')
+
+    # --------------------------------------------------------------------
+    # Refresco puntual y barato del crédito disponible.
+    # Después de que el flujo de mayoreo cambia una SO (confirmar / cobrar /
+    # rechazar / cancelar), se llama a este método sobre el partner para
+    # recalcular data_credit_available sin depender de que Odoo tenga que
+    # resolver la relación inversa masiva sale_order_ids en el write path.
+    # --------------------------------------------------------------------
+    def _refresh_wholesale_credit_available(self):
+        if not self:
+            return self
+        for partner in self.sudo().exists():
+            partner._compute_credit_available()
+        return self
+        for partner in self.sudo().exists():
+            partner._compute_credit_available()
+        return self

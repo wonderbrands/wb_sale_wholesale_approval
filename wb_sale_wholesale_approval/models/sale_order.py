@@ -90,6 +90,7 @@ class SaleOrder(models.Model):
             # ----------------------------------------------------------------------
             # Colocar estado en validacion
             self.write({'data_finance_approval_status': 'validation'})
+            self.partner_id._refresh_wholesale_credit_available()
 
 
     def action_set_to_collected(self):
@@ -152,6 +153,7 @@ class SaleOrder(models.Model):
             # Marcar las actividades encontradas como hechas
             if activities_to_lock:
                 activities_to_lock.action_done()
+            self.partner_id._refresh_wholesale_credit_available()
 
     def action_set_to_rejected(self):
         self.ensure_one()
@@ -181,11 +183,13 @@ class SaleOrder(models.Model):
                 )
 
             self.write({'data_finance_approval_status': 'rejected'})
+            self.partner_id._refresh_wholesale_credit_available()
 
     # -------------------------------------------------------------------------------------------
     # Sobreescribir el método de confirmación
     def action_confirm(self):
         res = super(SaleOrder, self).action_confirm()
+        self.mapped('partner_id')._refresh_wholesale_credit_available()
         if self.data_is_wholesale_sale:
             finance_group = self.env.ref('wb_sale_wholesale_approval.group_finance_user')
             finance_user = self.env['res.users'].search([('groups_id', 'in', finance_group.ids)], limit=1)
@@ -243,6 +247,7 @@ class SaleOrder(models.Model):
     # Sobreescribir el método de cancelar
     def action_cancel(self):
         for order in self:
+            order._refresh_wholesale_credit_available()
             if order.data_is_wholesale_sale:
                 #Cerrar actividades pendientes
                 activities_to_lock = self.env['mail.activity'].search([
@@ -328,7 +333,9 @@ class SaleOrder(models.Model):
         _logger.info(f"Se encontraron {len(old_orders)} órdenes antiguas que serán canceladas.")
 
         # Cancela las órdenes encontradas
+        partners_to_refresh = self.env['res.partner']
         for order in old_orders:
+            partners_to_refresh |= order.partner_id
             # Cancela la orden
             # Logica de cerrar actividades y status financiero a False, estan de action_cancel de este script
             order._action_cancel()
@@ -345,6 +352,8 @@ class SaleOrder(models.Model):
             order.message_post(
                 body="La orden de venta ha sido cancelada automáticamente por superar el plazo de 6 días sin confirmación de pago.")
             _logger.info(f"La orden de venta {order.name} ha sido cancelada.")
+
+        partners_to_refresh._refresh_wholesale_credit_available()
 
     # ----------------------------------------------------------------------------------
     # Lógica para el aviso en el chatter de órdenes pendientes
