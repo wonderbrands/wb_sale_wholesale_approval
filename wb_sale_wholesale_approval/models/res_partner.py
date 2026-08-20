@@ -140,6 +140,3 @@ class ResPartner(models.Model):
         for partner in self.sudo().exists():
             partner._compute_credit_available()
         return self
-        for partner in self.sudo().exists():
-            partner._compute_credit_available()
-        return self

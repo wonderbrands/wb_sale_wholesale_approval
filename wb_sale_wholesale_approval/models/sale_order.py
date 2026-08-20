@@ -247,7 +247,7 @@ class SaleOrder(models.Model):
     # Sobreescribir el método de cancelar
     def action_cancel(self):
         for order in self:
-            order._refresh_wholesale_credit_available()
+            order.partner_id._refresh_wholesale_credit_available()
             if order.data_is_wholesale_sale:
                 #Cerrar actividades pendientes
                 activities_to_lock = self.env['mail.activity'].search([
