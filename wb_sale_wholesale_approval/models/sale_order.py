@@ -185,6 +185,14 @@ class SaleOrder(models.Model):
     # -------------------------------------------------------------------------------------------
     # Sobreescribir el método de confirmación
     def action_confirm(self):
+        # 1) Llenar campos de snapshot de crédito ANTES de que super o cualquier refresh dispare lógica
+        for order in self:
+            order.write({
+                'data_partner_credit_approved': order.partner_id.data_credit_approved,
+                'data_partner_credit_limit_amount': order.partner_id.data_credit_limit or 0.0,
+                'data_partner_credit_available_amount': order.partner_id.data_credit_available or 0.0,
+            })
+
         res = super(SaleOrder, self).action_confirm()
         if self.data_is_wholesale_sale:
             finance_group = self.env.ref('wb_sale_wholesale_approval.group_finance_user')
