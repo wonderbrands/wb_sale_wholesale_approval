@@ -1,0 +1,208 @@
+<odoo>
+    <data>
+        <record id="view_order_form_sales_wholesale" model="ir.ui.view">
+            <field name="name">sale.order.form.sales.wholesale</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="data_is_wholesale_sale"
+                           readonly="state in ['sale', 'cancel'] or data_finance_approval_status"
+                           groups="wb_sale_wholesale_approval.group_sales_wholesale_user,wb_sale_wholesale_approval.group_finance_user"/>
+                </xpath>
+
+                <xpath expr="//div[hasclass('oe_title')]" position="before">
+                    <div class="badge rounded-pill text-bg-secondary float-end fs-6 border-0"
+                        style="clear: right;"
+                        invisible="not data_is_wholesale_sale">
+                        Venta al mayoreo
+                    </div>
+                </xpath>
+                
+                <xpath expr="//form/header" position="after">
+                    <div class="o_form_statusbar"
+                         groups="wb_sale_wholesale_approval.group_sales_wholesale_user"
+                         invisible="state not in ['sale', 'cancel'] or not data_is_wholesale_sale">
+
+                        <div class="o_statusbar_buttons">
+                            <button name="action_set_to_receipt_received" type="object"
+                                    string="Comprobante Recibido"
+                                    class="btn btn-primary mb-2"
+                                    invisible="data_finance_approval_status != 'pending'"
+                                    groups="wb_sale_wholesale_approval.group_sales_wholesale_user"/>
+
+                            <button name="action_set_to_collected" type="object"
+                                    string="Pago Cobrado"
+                                    class="btn btn-primary me-2 mb-2"
+                                    invisible="data_finance_approval_status != 'validation'"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+
+                            <button name="action_set_to_rejected" type="object"
+                                    string="Pago Rechazado"
+                                    class="btn btn-danger mb-2"
+                                    invisible="data_finance_approval_status != 'validation'"
+                                    groups="wb_sale_wholesale_approval.group_finance_user"/>
+                        </div>
+
+                        <field name="data_finance_approval_status"
+                               widget="statusbar"
+                               statusbar_visible="pending,validation,collected"
+                               options="{'clickable': False}"
+                               readonly="1"/>
+                    </div>
+                </xpath>
+
+                <xpath expr="//field[@name='date_order']" position="after">
+                    <field name="data_confirmation_date"
+                           invisible="not data_is_wholesale_sale or state != 'sale'"/>
+                </xpath>
+
+                <xpath expr="//button[@name='action_view_delivery']" position="attributes">
+                    <attribute name="invisible">
+                        delivery_count == 0 or (data_is_wholesale_sale and data_finance_approval_status in ['pending', 'validation'])
+                    </attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='team_id']" position="attributes">
+                    <attribute name="readonly">data_is_wholesale_sale</attribute>
+                </xpath>
+
+                <!-- =========================================================
+                     ESTADO "APARTADO" (paso opcional del flujo de mayoreo)
+
+                     El estado nativo (state) no se modifica: la orden se
+                     confirma normalmente y el almacén, los conectores y la
+                     facturación siguen viendo una venta confirmada.
+                     El botón Confirmar nativo se conserva intacto, porque
+                     apartar es opcional.
+                     ========================================================= -->
+
+                <!-- Banderas sin restricción de grupo: los modificadores del
+                     header las necesitan disponibles para cualquier usuario. -->
+                <xpath expr="//form/header" position="inside">
+                    <field name="data_is_wholesale_sale" invisible="1"/>
+                    <field name="data_is_reserved" invisible="1"/>
+                    <field name="data_finance_approval_status" invisible="1"/>
+                </xpath>
+
+                <!-- Botones del flujo de mayoreo. Ambos validan existencias:
+                     Apartar reserva el stock y espera el cobro; Confirmar deja la
+                     orden directamente como venta. Los Confirmar nativos se ocultan
+                     en mayoreo para que no exista una vía sin validación. -->
+                <xpath expr="//button[@id='action_confirm']" position="before">
+                    <button name="action_wholesale_reserve" type="object"
+                            string="Apartar" class="btn-primary"
+                            context="{'validate_analytic': True}"
+                            invisible="not data_is_wholesale_sale or state not in ('draft', 'sent')"/>
+
+                    <button name="action_wholesale_confirm" type="object"
+                            string="Confirmar"
+                            context="{'validate_analytic': True}"
+                            invisible="not data_is_wholesale_sale or state not in ('draft', 'sent')"/>
+                </xpath>
+
+                <xpath expr="//button[@id='action_confirm']" position="attributes">
+                    <attribute name="invisible">state != 'sent' or data_is_wholesale_sale</attribute>
+                </xpath>
+
+                <xpath expr="//form/header/button[@name='action_confirm'][not(@id)]" position="attributes">
+                    <attribute name="invisible">state != 'draft' or data_is_wholesale_sale</attribute>
+                </xpath>
+
+                <!-- Barra de estado: la nativa se oculta solo en mayoreo -->
+                <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
+                    <attribute name="invisible">data_is_wholesale_sale</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='state'][@widget='statusbar']" position="after">
+                    <field name="data_sale_state" widget="statusbar"
+                           statusbar_visible="draft,sent,apartado,sale"
+                           invisible="not data_is_wholesale_sale"/>
+                </xpath>
+
+                <!-- Mientras la orden está apartada no se factura: se ocultan los
+                     botones nativos, además del candado en _create_invoices. -->
+                <xpath expr="//button[@id='create_invoice']" position="attributes">
+                    <attribute name="invisible">invoice_status != 'to invoice' or data_is_reserved</attribute>
+                </xpath>
+
+                <xpath expr="//button[@id='create_invoice_percentage']" position="attributes">
+                    <attribute name="invisible">invoice_status != 'no' or state != 'sale' or data_is_reserved</attribute>
+                </xpath>
+                
+            </field>
+        </record>
+
+        <!-- Filtro y agrupado por el estado de venta de mayoreo -->
+        <record id="view_sales_order_filter_wholesale" model="ir.ui.view">
+            <field name="name">sale.order.list.select.wholesale</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                    <separator/>
+                    <filter string="Ventas al Mayoreo" name="wb_wholesale_orders"
+                            domain="[('data_is_wholesale_sale', '=', True)]"/>
+                    <filter string="Apartadas" name="wb_reserved_orders"
+                            domain="[('data_is_reserved', '=', True)]"/>
+                </xpath>
+
+                <xpath expr="//group/filter[@name='salesperson']" position="before">
+                    <filter string="Estado de venta" name="wb_sale_state"
+                            domain="[]" context="{'group_by': 'data_sale_state'}"/>
+                </xpath>
+
+            </field>
+        </record>
+
+
+        <!-- Pestaña "Datos necesarios" (WB_data_sale_order).
+             En ventas al mayoreo, la guía y sus adjuntos permanecen bloqueados
+             hasta que Finanzas marque el pago como cobrado, y la paquetería es
+             obligatoria.
+             Se hereda la vista de WB_data_sale_order -y no sale.view_order_form-
+             para garantizar que estos atributos se apliquen después de que sus
+             campos existan en el formulario. -->
+        <record id="view_order_form_wholesale_shipping" model="ir.ui.view">
+            <field name="name">sale.order.form.wholesale.shipping</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="WB_data_sale_order.wb_data_sale_order_guias_inherit"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//page[@name='attachments']//field[@name='data_tracking_readwrite']" position="attributes">
+                    <attribute name="readonly">data_is_wholesale_sale and data_finance_approval_status != 'collected'</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='attachments']//field[@name='data_carrier_selection_relational']" position="attributes">
+                    <attribute name="required">data_is_wholesale_sale</attribute>
+                </xpath>
+
+                <!-- Deja a la vista por qué la actividad de guía se enruta a un
+                     responsable u otro. -->
+                <xpath expr="//page[@name='attachments']//field[@name='data_carrier_selection_relational']" position="after">
+                    <field name="data_carrier_is_internal"
+                           string="Logística interna o Pick Up"
+                           widget="boolean_toggle"
+                           readonly="1"
+                           invisible="not data_is_wholesale_sale"/>
+                </xpath>
+
+                <xpath expr="//page[@name='attachments']//field[@name='attachments']" position="attributes">
+                    <attribute name="readonly">data_is_wholesale_sale and data_finance_approval_status != 'collected'</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='attachments']//field[@name='attachments']" position="before">
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not data_is_wholesale_sale or data_finance_approval_status == 'collected'">
+                        La guía y sus documentos se habilitan cuando Finanzas registre
+                        el pago como cobrado.
+                    </div>
+                </xpath>
+
+            </field>
+        </record>
+
+    </data>
+</odoo>

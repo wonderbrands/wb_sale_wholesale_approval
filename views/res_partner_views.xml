@@ -1,0 +1,67 @@
+<odoo>
+  <data>
+    <record id="view_partner_form_credit_fields" model="ir.ui.view">
+      <field name="name">res.partner.form.credit.fields</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_form"/>
+      <field name="arch" type="xml">
+
+        <xpath expr="//page[@name='sales_purchases']" position="inside">
+          <group string="Crédito" name="credit_group">
+            <field name="data_credit_approved" groups="wb_sale_wholesale_approval.group_finance_user"/>
+            <field name="can_edit_credit_limit" invisible="1"/>
+            <field name="data_credit_currency_id" invisible="1"/>
+            
+            <field name="data_credit_limit_raw"
+                   widget="monetary"
+                   invisible="not can_edit_credit_limit"/>
+            
+            <field name="data_credit_limit"
+                   widget="badge"
+                   decoration-success="data_credit_approved"
+                   decoration-danger="not data_credit_approved"
+                   readonly="1"/>
+            
+            <field name="data_credit_available"
+            widget="monetary"
+            decoration-danger="data_credit_available &lt;= 0"
+            decoration-success="data_credit_available &gt; 0"/>
+          </group>
+        </xpath>
+
+      </field>
+    </record>
+
+    <!-- Datos de contacto obligatorios: marca los campos como requeridos en el
+         formulario cuando el ajuste de la compañía está activo y el contacto es raíz.
+         La validación real vive en res.partner._wb_check_required_contact_data(). -->
+    <record id="view_partner_form_required_contact_data" model="ir.ui.view">
+      <field name="name">res.partner.form.required.contact.data</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_form"/>
+      <field name="arch" type="xml">
+
+        <xpath expr="//field[@name='company_type']" position="before">
+          <field name="data_contact_data_required" invisible="1"/>
+        </xpath>
+
+        <xpath expr="//field[@name='phone']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+        <xpath expr="//field[@name='email']" position="attributes">
+          <attribute name="required">user_ids or (data_contact_data_required and not parent_id)</attribute>
+        </xpath>
+
+        <xpath expr="//div[@name='partner_address_country']/field[@name='country_id']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+        <xpath expr="//field[@name='zip']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+      </field>
+    </record>
+  </data>
+</odoo>

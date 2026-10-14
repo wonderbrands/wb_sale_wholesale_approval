@@ -1,0 +1,1 @@
+from . import wb_wholesale_config, carriers_list, sale_order, res_partner, sale_order_credit, res_config_settings

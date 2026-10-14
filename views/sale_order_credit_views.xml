@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="view_order_form_sales_wholesale_credit" model="ir.ui.view">
+      <field name="name">sale.order.form.sales.wholesale.credit.box</field>
+      <field name="model">sale.order</field>
+      <field name="inherit_id" ref="wb_sale_wholesale_approval.view_order_form_sales_wholesale"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='partner_id']/ancestor::group[1]" position="after">
+          <group string="Información de pago"
+                 name="payment_info" 
+                 invisible="not data_is_wholesale_sale">
+
+            <group colspan="2">
+                <field name="data_partner_credit_approved_display" invisible="1"/>
+                
+                <field name="data_use_automated_credit" invisible="1"/>
+
+                <field name="data_is_credit_sale"
+                       readonly="state in ['sale', 'cancel'] or not data_partner_credit_approved_display"/>
+
+                <label for="data_partner_credit_limit_display" invisible="not data_partner_credit_approved_display"/>
+                <div class="o_row" invisible="not data_partner_credit_approved_display">
+                    <span class="badge rounded-pill text-bg-info fs-6">
+                        <field name="data_partner_credit_limit_display" readonly="1" nolabel="1"/>
+                    </span>
+                </div>
+
+                <label for="data_partner_credit_available_display" 
+                       invisible="not data_partner_credit_approved_display or not data_use_automated_credit"/>
+                <div class="o_row" 
+                     invisible="not data_partner_credit_approved_display or not data_use_automated_credit">
+                    
+                    <span class="badge rounded-pill text-bg-danger fs-6" 
+                          invisible="data_partner_credit_available_display &gt; 0">
+                        <field name="data_partner_credit_available_display" readonly="1" nolabel="1"/>
+                    </span>
+                    
+                    <span class="badge rounded-pill text-bg-success fs-6" 
+                          invisible="data_partner_credit_available_display &lt;= 0">
+                        <field name="data_partner_credit_available_display" readonly="1" nolabel="1"/>
+                    </span>
+                </div>
+                
+            </group>
+            
+            <group colspan="2">
+                <field name="data_total_order_amount" readonly="1"/>
+                
+                <!-- Editable también en órdenes confirmadas mientras estén
+                     desbloqueadas, igual que las líneas de la orden. -->
+                <field name="data_credit_amount"
+                       readonly="state == 'cancel' or locked or not data_is_credit_sale"/>
+                       
+                <field name="data_debit_amount" readonly="1"/>
+            </group>
+        </group>
+        </xpath>
+
+      </field>
+    </record>
+  </data>
+</odoo>

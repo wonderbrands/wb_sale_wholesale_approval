@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_order_sales_wholesale,sale.order access for wholesale users,model_sale_order,wb_sale_wholesale_approval.group_sales_wholesale_user,1,1,1,1
+access_wb_wholesale_config_user,wb.wholesale.config lectura,model_wb_wholesale_config,base.group_user,1,0,0,0
+access_wb_wholesale_config_manager,wb.wholesale.config manager,model_wb_wholesale_config,wb_sale_wholesale_approval.group_wholesale_manager,1,1,1,0
+access_wb_wholesale_config_system,wb.wholesale.config admin,model_wb_wholesale_config,base.group_system,1,1,1,1
