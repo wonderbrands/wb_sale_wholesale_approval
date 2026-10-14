@@ -1,1 +1,0 @@
-from . import sale_order, res_partner, sale_order_credit
