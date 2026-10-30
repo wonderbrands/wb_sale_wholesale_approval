@@ -12,33 +12,33 @@
                  invisible="not data_is_wholesale_sale">
 
             <group colspan="2">
-                <field name="data_partner_credit_approved" invisible="1"/>
+                <field name="data_partner_credit_approved_display" invisible="1"/>
                 
                 <field name="data_use_automated_credit" invisible="1"/>
 
                 <field name="data_is_credit_sale"
-                       readonly="state in ['sale', 'cancel'] or not data_partner_credit_approved"/>
+                       readonly="state in ['sale', 'cancel'] or not data_partner_credit_approved_display"/>
 
-                <label for="data_partner_credit_limit_amount" invisible="not data_is_credit_sale"/>
-                <div class="o_row" invisible="not data_is_credit_sale">
+                <label for="data_partner_credit_limit_display" invisible="not data_partner_credit_approved_display"/>
+                <div class="o_row" invisible="not data_partner_credit_approved_display">
                     <span class="badge rounded-pill text-bg-info fs-6">
-                        <field name="data_partner_credit_limit_amount" readonly="1" nolabel="1"/>
+                        <field name="data_partner_credit_limit_display" readonly="1" nolabel="1"/>
                     </span>
                 </div>
 
-                <label for="data_partner_credit_available_amount" 
-                       invisible="not data_is_credit_sale or not data_use_automated_credit"/>
+                <label for="data_partner_credit_available_display" 
+                       invisible="not data_partner_credit_approved_display or not data_use_automated_credit"/>
                 <div class="o_row" 
-                     invisible="not data_is_credit_sale or not data_use_automated_credit">
+                     invisible="not data_partner_credit_approved_display or not data_use_automated_credit">
                     
                     <span class="badge rounded-pill text-bg-danger fs-6" 
-                          invisible="data_partner_credit_available_amount &gt; 0">
-                        <field name="data_partner_credit_available_amount" readonly="1" nolabel="1"/>
+                          invisible="data_partner_credit_available_display &gt; 0">
+                        <field name="data_partner_credit_available_display" readonly="1" nolabel="1"/>
                     </span>
                     
                     <span class="badge rounded-pill text-bg-success fs-6" 
-                          invisible="data_partner_credit_available_amount &lt;= 0">
-                        <field name="data_partner_credit_available_amount" readonly="1" nolabel="1"/>
+                          invisible="data_partner_credit_available_display &lt;= 0">
+                        <field name="data_partner_credit_available_display" readonly="1" nolabel="1"/>
                     </span>
                 </div>
                 
@@ -46,10 +46,17 @@
             
             <group colspan="2">
                 <field name="data_total_order_amount" readonly="1"/>
-                
+
+                <!-- Editable también en órdenes confirmadas mientras estén
+                     desbloqueadas, igual que las líneas de la orden. Solo se
+                     acepta el total de la orden (no hay pago mixto).
+                     force_save: el campo queda readonly al desmarcar la venta
+                     a crédito, y sin esto el cliente web no enviaría el 0 que
+                     pone el onchange. -->
                 <field name="data_credit_amount"
-                       readonly="state in ['sale', 'cancel'] or not data_is_credit_sale"/>
-                       
+                       readonly="state == 'cancel' or locked or not data_is_credit_sale"
+                       force_save="1"/>
+
                 <field name="data_debit_amount" readonly="1"/>
             </group>
         </group>

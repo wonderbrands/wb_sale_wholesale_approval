@@ -8,10 +8,16 @@
             <field name="arch" type="xml">
                 
                 <xpath expr="//block[@name='catalog_setting_container']" position="after">
-                    <block title="Crédito de Mayoreo" name="wholesale_credit_settings">
-                        
-                        <setting string="Fórmula Estricta de Crédito" help="Restar automáticamente la deuda contable y pedidos en tránsito del límite de crédito del cliente.">
+                    <block title="Ventas al Mayoreo" name="wb_wholesale_settings">
+
+                        <setting string="Fórmula Estricta de Crédito"
+                                 help="Restar automáticamente la deuda contable y pedidos en tránsito del límite de crédito del cliente.">
                             <field name="data_use_automated_credit_calculation"/>
+                        </setting>
+
+                        <setting string="Datos de contacto obligatorios"
+                                 help="Exigir teléfono, correo electrónico, país y código postal al crear un contacto nuevo (empresas e individuos sin contacto relacionado).">
+                            <field name="data_require_partner_contact_data"/>
                         </setting>
 
                     </block>

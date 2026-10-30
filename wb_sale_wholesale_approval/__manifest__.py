@@ -1,7 +1,7 @@
 {
     'name': 'Aprobación de Ventas al Mayoreo',
     'license': 'LGPL-3',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.9.2',
     'summary': 'Módulo para gestionar la aprobación financiera de ventas al mayoreo.',
     'description': """
         Este módulo extiende el modelo de ventas de Odoo para permitir una gestión
@@ -24,6 +24,8 @@
         'views/res_partner_views.xml',
         'views/sale_order_credit_views.xml',
         'views/res_config_settings_views.xml',
+        'views/wb_wholesale_config_views.xml',
+        'views/carriers_list_views.xml',
         'data/ir_cron.xml',
     ],
     'installable': True,

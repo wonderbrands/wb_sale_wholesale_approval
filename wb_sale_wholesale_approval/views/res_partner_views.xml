@@ -31,5 +31,37 @@
 
       </field>
     </record>
+
+    <!-- Datos de contacto obligatorios: marca los campos como requeridos en el
+         formulario cuando el ajuste de la compañía está activo y el contacto es raíz.
+         La validación real vive en res.partner._wb_check_required_contact_data(). -->
+    <record id="view_partner_form_required_contact_data" model="ir.ui.view">
+      <field name="name">res.partner.form.required.contact.data</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_form"/>
+      <field name="arch" type="xml">
+
+        <xpath expr="//field[@name='company_type']" position="before">
+          <field name="data_contact_data_required" invisible="1"/>
+        </xpath>
+
+        <xpath expr="//field[@name='phone']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+        <xpath expr="//field[@name='email']" position="attributes">
+          <attribute name="required">user_ids or (data_contact_data_required and not parent_id)</attribute>
+        </xpath>
+
+        <xpath expr="//div[@name='partner_address_country']/field[@name='country_id']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+        <xpath expr="//field[@name='zip']" position="attributes">
+          <attribute name="required">data_contact_data_required and not parent_id</attribute>
+        </xpath>
+
+      </field>
+    </record>
   </data>
 </odoo>

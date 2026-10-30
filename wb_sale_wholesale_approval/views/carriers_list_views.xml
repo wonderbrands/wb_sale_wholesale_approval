@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_carriers_list_list_wholesale" model="ir.ui.view">
+            <field name="name">carriers.list.list.wholesale</field>
+            <field name="model">carriers.list</field>
+            <field name="inherit_id" ref="WB_data_sale_order.view_carriers_list_list"/>
+            <field name="arch" type="xml">
+
+                <!-- La lista original no es editable, y en una lista no editable el
+                     widget boolean_toggle se muestra pero NO guarda: su onClick exige
+                     record.isInEdition
+                     (web/static/src/views/fields/boolean_toggle/list_boolean_toggle_field.js).
+                     Se habilita la edición en línea para que la casilla funcione. -->
+                <xpath expr="//list" position="attributes">
+                    <attribute name="editable">bottom</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='code']" position="after">
+                    <field name="data_is_internal_logistics" widget="boolean_toggle"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="view_carriers_list_form_wholesale" model="ir.ui.view">
+            <field name="name">carriers.list.form.wholesale</field>
+            <field name="model">carriers.list</field>
+            <field name="inherit_id" ref="WB_data_sale_order.view_carriers_list_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='code']" position="after">
+                    <field name="data_is_internal_logistics"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
