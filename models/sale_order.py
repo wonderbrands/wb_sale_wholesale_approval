@@ -495,6 +495,10 @@ class SaleOrder(models.Model):
             })
 
     def action_confirm(self):
+        # Revalida el crédito justo antes de comprometerlo: cubre Apartar,
+        # Confirmar y la confirmación desde el portal.
+        self.filtered('data_is_credit_sale')._wb_check_credit_amount()
+
         # El snapshot se congela ANTES de confirmar: a partir de aquí la orden
         # deja de reflejar los valores vivos del cliente.
         self._wb_freeze_partner_credit_snapshot()

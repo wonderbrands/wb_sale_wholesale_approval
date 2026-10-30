@@ -13,7 +13,9 @@ class SaleOrder(models.Model):
         help='Marcar si esta orden se pagará usando crédito del cliente.'
     )
 
-    # Monto que el cliente desea cubrir con crédito
+    # Monto que el cliente desea cubrir con crédito. Lo captura el vendedor,
+    # pero solo se acepta el total de la orden: no se admite pago mixto
+    # (ver _wb_check_credit_amount).
     data_credit_amount = fields.Monetary(
         string='Pago con crédito',
         currency_field='currency_id'
@@ -156,32 +158,34 @@ class SaleOrder(models.Model):
             order.data_total_order_amount = total
             order.data_debit_amount = total - credit
 
-    @api.onchange('data_is_credit_sale', 'amount_total')
+    @api.onchange('data_is_credit_sale')
     def _onchange_credit_amount(self):
-        """Una venta al mayoreo no admite pago mixto: o se cubre completa
-        con crédito, o es de contado. El monto a crédito ya no lo escribe
-        el vendedor, se sincroniza solo contra el total de la orden -así
-        una línea agregada después de marcar la casilla también se refleja-.
-        """
+        """Al desmarcar la venta a crédito se limpia el monto capturado."""
         for order in self:
-            order.data_credit_amount = order.amount_total if order.data_is_credit_sale else 0.0
+            if not order.data_is_credit_sale:
+                order.data_credit_amount = 0.0
 
     @api.constrains('data_credit_amount', 'data_is_credit_sale', 'amount_total')
     def _check_credit_amount_not_over_total(self):
         """Valida reglas de negocio al guardar."""
+        self._wb_check_credit_amount()
+
+    def _wb_check_credit_amount(self):
+        """Reglas del monto a crédito. Se llama al guardar y también al confirmar.
+
+        Al confirmar hace falta porque el constrains solo se dispara cuando
+        cambia el monto, la casilla o el total: una cotización guardada con la
+        regla anterior (crédito parcial), o cuyo cliente consumió su crédito
+        con otras órdenes desde entonces, se confirmaría sin revisión.
+        """
         for order in self:
+            # Una venta de contado no consume crédito: el monto que haya quedado
+            # capturado se ignora en todos los cálculos.
             if not order.data_is_credit_sale:
-                if order.data_credit_amount > 1e-6:
-                    raise ValidationError(_(
-                        "Una venta de contado no puede tener un monto a crédito. "
-                        "Marca 'Venta a crédito' si el cliente va a pagar con su línea de crédito."
-                    ))
                 continue
 
-            # Ya no se admite pago mixto: el crédito debe cubrir el 100% del
-            # total, nunca una parte. Evita el hueco de declarar la venta
-            # como "a crédito" y dejar una porción sin cubrir ni a crédito
-            # ni de contado.
+            # No se admite pago mixto: el crédito debe cubrir el 100% del total,
+            # nunca una parte (p. ej. 300 a crédito y 200 de contado).
             if abs(order.data_credit_amount - order.amount_total) > 1e-6:
                 raise ValidationError(_(
                     "En una venta a crédito, el crédito debe cubrir el 100%% del total de la orden.\n"
@@ -190,13 +194,11 @@ class SaleOrder(models.Model):
                     total=order.amount_total,
                     credit=order.data_credit_amount,
                 ))
-            if order.data_credit_amount < -1e-6:
-                raise ValidationError("El pago con crédito no puede ser negativo.")
 
             # Se valida calculando la deuda en TIEMPO REAL en la base de datos.
             # Aplica a las cotizaciones y también a las órdenes confirmadas que
-            # siguen desbloqueadas, porque ahí el total -y por lo tanto el
-            # monto a crédito, que lo sigue- todavía puede cambiar.
+            # siguen desbloqueadas, porque ahí el total y el monto a crédito
+            # todavía pueden cambiar.
             is_editable = order.state in ('draft', 'sent') or (
                 order.state == 'sale' and not order.locked
             )
