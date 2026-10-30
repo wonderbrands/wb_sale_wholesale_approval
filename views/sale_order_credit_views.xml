@@ -46,12 +46,13 @@
             
             <group colspan="2">
                 <field name="data_total_order_amount" readonly="1"/>
-                
-                <!-- Editable también en órdenes confirmadas mientras estén
-                     desbloqueadas, igual que las líneas de la orden. -->
-                <field name="data_credit_amount"
-                       readonly="state == 'cancel' or locked or not data_is_credit_sale"/>
-                       
+
+                <!-- Ya no es editable: una venta a crédito siempre cubre el
+                     100% del total, así que el monto se sincroniza solo
+                     contra data_total_order_amount (ver onchange en
+                     sale_order_credit.py). No se admite pago mixto. -->
+                <field name="data_credit_amount" readonly="1"/>
+
                 <field name="data_debit_amount" readonly="1"/>
             </group>
         </group>

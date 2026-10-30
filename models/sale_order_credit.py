@@ -156,33 +156,47 @@ class SaleOrder(models.Model):
             order.data_total_order_amount = total
             order.data_debit_amount = total - credit
 
-    @api.onchange('data_is_credit_sale', 'data_credit_amount')
+    @api.onchange('data_is_credit_sale', 'amount_total')
     def _onchange_credit_amount(self):
-        """Normaliza en la vista: sin negativos ni montos mayores al total."""
+        """Una venta al mayoreo no admite pago mixto: o se cubre completa
+        con crédito, o es de contado. El monto a crédito ya no lo escribe
+        el vendedor, se sincroniza solo contra el total de la orden -así
+        una línea agregada después de marcar la casilla también se refleja-.
+        """
         for order in self:
-            if not order.data_is_credit_sale:
-                order.data_credit_amount = 0.0
-            else:
-                if order.data_credit_amount is None or order.data_credit_amount < 0.0:
-                    order.data_credit_amount = 0.0
-                if order.amount_total and order.data_credit_amount > order.amount_total:
-                    order.data_credit_amount = order.amount_total
+            order.data_credit_amount = order.amount_total if order.data_is_credit_sale else 0.0
 
     @api.constrains('data_credit_amount', 'data_is_credit_sale', 'amount_total')
     def _check_credit_amount_not_over_total(self):
         """Valida reglas de negocio al guardar."""
         for order in self:
             if not order.data_is_credit_sale:
+                if order.data_credit_amount > 1e-6:
+                    raise ValidationError(_(
+                        "Una venta de contado no puede tener un monto a crédito. "
+                        "Marca 'Venta a crédito' si el cliente va a pagar con su línea de crédito."
+                    ))
                 continue
 
-            if order.data_credit_amount > order.amount_total + 1e-6:
-                raise ValidationError("El pago con crédito no puede ser mayor al total de la orden.")
+            # Ya no se admite pago mixto: el crédito debe cubrir el 100% del
+            # total, nunca una parte. Evita el hueco de declarar la venta
+            # como "a crédito" y dejar una porción sin cubrir ni a crédito
+            # ni de contado.
+            if abs(order.data_credit_amount - order.amount_total) > 1e-6:
+                raise ValidationError(_(
+                    "En una venta a crédito, el crédito debe cubrir el 100%% del total de la orden.\n"
+                    "Total de la orden: %(total)s\n"
+                    "Monto a crédito capturado: %(credit)s",
+                    total=order.amount_total,
+                    credit=order.data_credit_amount,
+                ))
             if order.data_credit_amount < -1e-6:
                 raise ValidationError("El pago con crédito no puede ser negativo.")
 
             # Se valida calculando la deuda en TIEMPO REAL en la base de datos.
             # Aplica a las cotizaciones y también a las órdenes confirmadas que
-            # siguen desbloqueadas, porque ahí el monto a crédito es editable.
+            # siguen desbloqueadas, porque ahí el total -y por lo tanto el
+            # monto a crédito, que lo sigue- todavía puede cambiar.
             is_editable = order.state in ('draft', 'sent') or (
                 order.state == 'sale' and not order.locked
             )
